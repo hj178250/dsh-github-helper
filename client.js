@@ -193,6 +193,15 @@ function describeFailure(status, body) {
       'common.copy': '复制解释文字',
       'common.close': '关闭',
       'common.ok': '确定',
+      'mine.title': '我的项目',
+      'mine.loading': '正在读取你的项目…',
+      'mine.empty': '你的账号下还没有项目。',
+      'mine.error': '读取失败，请先登录 GitHub。',
+      'mine.login': '先登录',
+      'mine.refresh': '刷新',
+      'mine.private': '私有',
+      'mine.public': '公开',
+      'mine.count': '共 {count} 个项目',
     }
 
     const EN = {
@@ -747,6 +756,75 @@ function describeFailure(status, body) {
       foot.appendChild(submit)
       panel.appendChild(title)
       panel.appendChild(hint)
+      panel.appendChild(foot)
+      box.appendChild(panel)
+      box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
+      document.body.appendChild(box)
+    }
+
+    /** "我的项目" entry: read the logged-in account's repositories and list them. */
+    async function onMine(t) {
+      let res
+      try { res = await getJson('/mine') } catch (error) { res = { ok: false } }
+      openMineDialog(t, res || {})
+    }
+
+    function openMineDialog(t, res) {
+      const box = document.createElement('div')
+      box.setAttribute('style', 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999;')
+      const panel = document.createElement('div')
+      panel.setAttribute('style', 'max-width:640px;width:90%;max-height:80vh;overflow:auto;background:var(--dsw-bg-elevated,#fff);color:var(--dsw-fg-default,#111);border-radius:12px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.3);')
+      const head = document.createElement('div')
+      head.setAttribute('style', 'font-size:16px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;')
+      head.appendChild(document.createTextNode(t('mine.title')))
+      const close = document.createElement('button')
+      close.textContent = t('common.close')
+      close.onclick = function () { document.body.removeChild(box) }
+      head.appendChild(close)
+      const body = document.createElement('div')
+      body.setAttribute('style', 'line-height:1.6;')
+      const repos = res && Array.isArray(res.repos) ? res.repos : []
+      if (res && res.ok && repos.length) {
+        const count = document.createElement('div')
+        count.setAttribute('style', 'font-size:12px;opacity:.75;margin-bottom:10px;')
+        count.textContent = t('mine.count', { count: repos.length })
+        body.appendChild(count)
+        repos.forEach(function (r) {
+          const row = document.createElement('div')
+          row.setAttribute('style', 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(127,127,127,.18);')
+          const left = document.createElement('a')
+          left.setAttribute('href', r.htmlUrl || '#')
+          left.setAttribute('target', '_blank')
+          left.setAttribute('rel', 'noreferrer')
+          left.setAttribute('style', 'color:inherit;text-decoration:none;font-weight:500;')
+          left.textContent = r.fullName || r.name
+          const right = document.createElement('span')
+          right.setAttribute('style', 'font-size:12px;opacity:.75;white-space:nowrap;')
+          right.textContent = (r.private ? t('mine.private') : t('mine.public')) + (r.language ? ' · ' + r.language : '') + (r.stars ? ' · ⭐' + r.stars : '')
+          row.appendChild(left)
+          row.appendChild(right)
+          body.appendChild(row)
+        })
+      } else if (res && res.ok) {
+        body.textContent = t('mine.empty')
+      } else {
+        body.textContent = (res && res.text) || t('mine.error')
+      }
+      panel.appendChild(head)
+      panel.appendChild(body)
+      const foot = document.createElement('div')
+      foot.setAttribute('style', 'margin-top:16px;text-align:right;')
+      if (!(res && res.ok)) {
+        const login = document.createElement('button')
+        login.textContent = t('mine.login')
+        login.onclick = function () { document.body.removeChild(box); onUpload({ name: '', fullName: '' }, t) }
+        foot.appendChild(login)
+      }
+      const refresh = document.createElement('button')
+      refresh.textContent = t('mine.refresh')
+      refresh.setAttribute('style', 'margin-left:8px;')
+      refresh.onclick = function () { document.body.removeChild(box); onMine(t) }
+      foot.appendChild(refresh)
       panel.appendChild(foot)
       box.appendChild(panel)
       box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
@@ -1800,6 +1878,7 @@ function describeFailure(status, body) {
             { className: 'gt-actions' },
             data ? h('span', { className: 'gt-note' }, t('updated') + ' ' + localTime(data.generatedAt) + ' · ' + (data.cache === 'hit' ? t('cache.hit') : t('cache.fresh'))) : null,
             h('button', { type: 'button', className: 'gt-btn', onClick: refresh, disabled: state.status === 'loading' || state.status === 'refreshing' }, t('refresh')),
+            h('button', { type: 'button', className: 'gt-btn', onClick: function () { onMine(t) }, title: t('mine.title') }, t('mine.title')),
           ),
         ),
       )
