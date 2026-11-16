@@ -177,13 +177,13 @@ function describeFailure(status, body) {
       'ai.status.unconfigured': '未配置',
       'nav.title': 'GitHub 助手',
       'title': 'GitHub 助手 · 中文热门项目',
-      'subtitle': '中文热门卡片 · 大白话解释 · 一键传到自己的 GitHub',
+      'subtitle': '中文热门卡片 · 大白话解释 · 一键下载应用到自己的 GitHub',
       'action.what': '这是什么？',
-      'action.upload': '传到我的 GitHub',
+      'action.upload': '应用下载',
       'action.login': '登录 GitHub',
       'action.loginStatus': '检查登录状态',
       'explain.title': '大白话解释',
-      'upload.title': '传到我的 GitHub',
+      'upload.title': '应用下载',
       'upload.path': '本地项目文件夹路径',
       'upload.name': '仓库名（默认文件夹名）',
       'upload.private': '设为私有仓库',
@@ -611,19 +611,66 @@ function describeFailure(status, body) {
       return fetch(BASE + path, { method: 'GET' }).then(function (res) { return res.json() })
     }
 
-    /** The card's "这是什么？" entry: build the three-part plain-language context and show it. */
-    async function onExplain(repo, t) {
-      const payload = {
-        fullName: repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name),
-        name: repo.name,
-        description: repo.description || repo.tldr || '',
-        readmeSnippet: repo.readmeSnippet || '',
-        category: repo.categoryZh || repo.category || '',
-        language: repo.language || '',
+    /** 客户端上下文，在 apply() 中保存，供卡片按钮调用核心服务。 */
+    let HOST_CTX = null
+
+    /** 把文字作为用户消息直接投递到当前对话，触发当前大模型；成功返回 true。 */
+    function sendToConversation(text) {
+      try {
+        const ctx = HOST_CTX
+        if (!ctx) return false
+        // 运行时按需获取会话服务，取不到就回退弹窗，不影响卡片本身加载。
+        const sessions = (typeof ctx.get === 'function' && ctx.get('sessions')) || ctx.sessions
+        const uiSession = (typeof ctx.get === 'function' && ctx.get('uiSession')) || ctx.uiSession
+        if (!sessions || !uiSession || !uiSession.adapter || !uiSession.adapter.current) return false
+        const snapshot = uiSession.adapter.current.getSnapshot()
+        const sessionId = snapshot && snapshot.key
+        if (!sessionId) return false
+        const scope = sessions.scope(sessionId)
+        const conversation = scope && scope.get('conversation')
+        if (!conversation || typeof conversation.send !== 'function') return false
+        const sent = conversation.send(text)
+        if (sent && typeof sent.catch === 'function') sent.catch(function () {})
+        return true
+      } catch (error) {
+        return false
       }
+    }
+
+    /** 构造交给大模型解释项目的三段式提示。 */
+    function buildExplainPrompt(repo) {
+      const fullName = repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name) || ''
+      const lines = [
+        '请用大白话解释下面这个 GitHub 热门项目，严格按三段式输出：',
+        '① 它到底是干什么的（不超过 30 字）',
+        '② 普通人能拿它做什么（1-2 个具体场景）',
+        '③ 原理大概是怎么回事（用生活里的类比，不要讲代码细节）',
+        '',
+        '项目名称：' + (repo.name || ''),
+        '项目全名：' + fullName,
+        '分类：' + (repo.categoryZh || repo.category || ''),
+        '编程语言：' + (repo.language || ''),
+        '项目描述：' + (repo.description || repo.tldr || ''),
+      ]
+      if (repo.readmeSnippet) lines.push('README 片段：' + repo.readmeSnippet)
+      return lines.join('\n')
+    }
+
+    /** 卡片的「这是什么？」入口：把项目信息直接交给当前对话的大模型解释。 */
+    async function onExplain(repo, t) {
+      const prompt = buildExplainPrompt(repo)
+      if (sendToConversation(prompt)) return
+      // 没有可用的实时对话时，退回本地展示已准备好的解释上下文。
       let text
       try {
-        const res = await postJson('/explain', payload)
+        const res = await postJson('/explain', {
+          fullName: repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name),
+          name: repo.name,
+          description: repo.description || repo.tldr || '',
+          readmeSnippet: repo.readmeSnippet || '',
+          category: repo.categoryZh || repo.category || '',
+          language: repo.language || '',
+        })
         text = res && res.text ? res.text : '解释内容生成失败，请稍后再试。'
       } catch (error) {
         text = '解释内容生成失败：' + (error && error.message ? error.message : String(error))
@@ -672,7 +719,7 @@ function describeFailure(status, body) {
       document.body.appendChild(box)
     }
 
-    /** The card's "传到我的 GitHub" entry: check login, then show the upload form. */
+    /** 卡片的「应用下载」入口：检查登录状态，然后展示上传表单。 */
     async function onUpload(repo, t) {
       let state
       try { state = await getJson('/login/status') } catch (error) { state = { ok: false } }
@@ -901,8 +948,8 @@ function describeFailure(status, body) {
       '.gt-btn{display:inline-flex;align-items:center;gap:6px;height:34px;min-width:68px;padding:0 14px;border-radius:10px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.09));background:var(--dsw-alias-bg-layer-1,rgba(255,255,255,.04));color:var(--dsw-alias-label-primary,#e6e6e6);font:inherit;font-size:12.5px;font-weight:550;cursor:pointer;text-decoration:none;white-space:nowrap;transition:border-color .18s ease,background .18s ease,transform .12s ease,box-shadow .18s ease}',
       '.gt-btn:hover{border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 10%,var(--dsw-alias-bg-layer-2,transparent));box-shadow:0 4px 16px color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 16%,transparent)}',
       '.gt-btn:active{transform:translateY(1px)}',
-      '.gt-btn[data-primary="1"]{background:linear-gradient(135deg,var(--dsw-alias-brand-primary,#4b6bfb),color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 78%,#7c3aed));border-color:transparent;color:var(--dsw-alias-bg-base,#fff);box-shadow:0 6px 18px color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 34%,transparent)}',
-      '.gt-btn[data-primary="1"]:hover{filter:brightness(1.05);box-shadow:0 8px 24px color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 42%,transparent)}',
+      '.gt-btn[data-primary="1"]{background:linear-gradient(135deg,#34373f,#13151a);border-color:1px solid rgba(255,255,255,.12);color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.34)}',
+      '.gt-btn[data-primary="1"]:hover{filter:brightness(1.12);box-shadow:0 8px 24px rgba(0,0,0,.5)}',
       '.gt-btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;filter:none}',
       /* ---------- 工具栏 ---------- */
       '.gt-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));border-radius:16px;background:color-mix(in srgb,var(--dsw-alias-bg-layer-1,rgba(255,255,255,.04)) 82%,transparent);backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.18)}',
@@ -916,7 +963,7 @@ function describeFailure(status, body) {
       '.gt-chips{display:flex;gap:6px;flex-wrap:wrap}',
       '.gt-chip{border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.09));background:transparent;color:var(--dsw-alias-label-secondary,#9aa3b2);border-radius:999px;padding:4px 12px;font:inherit;font-size:12px;cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}',
       '.gt-chip:hover{color:var(--dsw-alias-label-primary,#e6e6e6);border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 45%,transparent)}',
-      '.gt-chip[data-active="1"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--dsw-alias-brand-primary,#4b6bfb),color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 78%,#7c3aed));box-shadow:0 3px 10px color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 28%,transparent)}',
+      '.gt-chip[data-active="1"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,#34373f,#13151a);box-shadow:0 3px 10px color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 28%,transparent)}',
       /* ---------- 横幅 ---------- */
       '.gt-banners{display:flex;flex-direction:column;gap:6px}',
       '.gt-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;border-radius:12px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));background:var(--dsw-alias-bg-layer-1,rgba(255,255,255,.04));font-size:12px;color:var(--dsw-alias-label-secondary,#9aa3b2)}',
@@ -975,14 +1022,14 @@ function describeFailure(status, body) {
       '.gt-helper-actions{display:flex;gap:8px;margin-top:2px;padding-top:11px;border-top:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08))}',
       '.gt-helper-btn{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:9px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));background:transparent;color:var(--dsw-alias-label-secondary,#b0b8c4);font:inherit;font-size:12px;font-weight:550;cursor:pointer;transition:all .16s ease}',
       '.gt-helper-btn:hover{color:var(--dsw-alias-brand-primary,#6b8bff);border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 10%,transparent)}',
-      '.gt-helper-btn.gt-helper-upload{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--dsw-alias-brand-primary,#4b6bfb),color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 78%,#7c3aed));box-shadow:0 4px 12px color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 28%,transparent)}',
+      '.gt-helper-btn.gt-helper-upload{color:#fff;border-color:rgba(255,255,255,.12);background:linear-gradient(135deg,#34373f,#13151a);box-shadow:0 4px 12px rgba(0,0,0,.28)}',
       '.gt-helper-btn.gt-helper-upload:hover{filter:brightness(1.06);color:#fff}',
       /* ---------- 分页 ---------- */
       '.gt-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--dsw-alias-label-secondary,#9aa3b2);flex-wrap:wrap}',
       '.gt-pager-btns{display:flex;gap:6px;align-items:center}',
       '.gt-pager-btns button{width:30px;height:30px;border-radius:9px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.09));background:var(--dsw-alias-bg-layer-1,rgba(255,255,255,.04));color:var(--dsw-alias-label-secondary,#9aa3b2);font:inherit;font-size:12px;cursor:pointer;transition:all .15s ease}',
       '.gt-pager-btns button:hover{border-color:var(--dsw-alias-brand-primary,#4b6bfb);color:var(--dsw-alias-label-primary,#e6e6e6)}',
-      '.gt-pager-btns button[data-active="1"]{color:#fff;background:linear-gradient(135deg,var(--dsw-alias-brand-primary,#4b6bfb),color-mix(in srgb,var(--dsw-alias-brand-primary,#4b6bfb) 78%,#7c3aed));border-color:transparent}',
+      '.gt-pager-btns button[data-active="1"]{color:#fff;background:linear-gradient(135deg,#34373f,#13151a);border-color:transparent}',
       '.gt-pager-btns button:disabled{opacity:.4;cursor:not-allowed}',
       '.gt-note{font-size:11.5px;color:var(--dsw-alias-label-secondary,#9aa3b2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}',
       '.gt-deep-note{margin:0;padding:10px 14px;border-radius:12px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));background:var(--dsw-alias-bg-layer-1,rgba(255,255,255,.04));font-size:12px;color:var(--dsw-alias-label-secondary,#9aa3b2)}',
@@ -2372,6 +2419,7 @@ function describeFailure(status, body) {
       /** Offline-test surface for the Task-4 chip/search/banner logic. */
       __test: { buildChips, filterRepos, emptyHint, shortfallText, networkBanner, installQualityBanner, errorHeadline },
       apply(ctx) {
+        HOST_CTX = ctx
         let locale = null
         try {
           locale = typeof ctx.get === 'function' ? ctx.get('locale') : null
