@@ -183,7 +183,11 @@ function describeFailure(status, body) {
       'action.login': '登录 GitHub',
       'action.loginStatus': '检查登录状态',
       'explain.title': '大白话解释',
-      'upload.title': '应用下载',
+      'download.title': '应用下载',
+      'download.dest': '保存到哪个文件夹',
+      'download.submit': '开始下载',
+      'download.hint': '会把项目的源码压缩包下载并解压到你选的文件夹，不经过对话、不消耗 Token。',
+      'upload.title': '传到我的 GitHub',
       'upload.path': '本地项目文件夹路径',
       'upload.name': '仓库名（默认文件夹名）',
       'upload.private': '设为私有仓库',
@@ -202,6 +206,8 @@ function describeFailure(status, body) {
       'mine.private': '私有',
       'mine.public': '公开',
       'mine.count': '共 {count} 个项目',
+      'mine.upload': '传项目上去',
+      'mine.download': '下载到本地',
     }
 
     const EN = {
@@ -719,7 +725,7 @@ function describeFailure(status, body) {
       document.body.appendChild(box)
     }
 
-    /** 卡片的「应用下载」入口：检查登录状态，然后展示上传表单。 */
+    /** 卡片的「应用下载」入口：检查登录状态，然后展示下载确认表单。 */
     async function onUpload(repo, t) {
       let state
       try { state = await getJson('/login/status') } catch (error) { state = { ok: false } }
@@ -734,10 +740,73 @@ function describeFailure(status, body) {
         openInfoDialog(t('action.login'), loginText, t)
         return
       }
-      openUploadDialog(repo, t)
+      openDownloadDialog(repo, t)
     }
 
-    /** Upload form: path, repo name (defaults to folder name), visibility. */
+    /** Download form: pick a folder, then fetch and unzip the repo source. */
+    function openDownloadDialog(repo, t) {
+      const box = document.createElement('div')
+      box.className = 'gt-dialog-backdrop'
+      const panel = document.createElement('div')
+      panel.className = 'gt-dialog'
+      const title = document.createElement('h3')
+      title.className = 'gt-dialog-title'
+      title.textContent = t('download.title') + '：' + (repo.fullName || repo.name || '')
+      const hint = document.createElement('div')
+      hint.className = 'gt-field-hint'
+      hint.textContent = t('download.hint')
+      const mkField = function (label, placeholder, value) {
+        const field = document.createElement('div')
+        field.className = 'gt-field'
+        const lab = document.createElement('label')
+        lab.className = 'gt-field-label'
+        lab.textContent = label
+        const input = document.createElement('input')
+        input.className = 'gt-field-input'
+        input.setAttribute('type', 'text')
+        input.setAttribute('placeholder', placeholder || '')
+        input.value = value || ''
+        field.appendChild(lab)
+        field.appendChild(input)
+        panel.appendChild(field)
+        return input
+      }
+      const destInput = mkField(t('download.dest'), 'C:\\Users\\你的用户名\\Downloads', '')
+      const foot = document.createElement('div')
+      foot.className = 'gt-dialog-foot'
+      const cancel = document.createElement('button')
+      cancel.className = 'gt-btn'
+      cancel.textContent = t('upload.cancel')
+      cancel.onclick = function () { document.body.removeChild(box) }
+      const submit = document.createElement('button')
+      submit.className = 'gt-btn'
+      submit.setAttribute('data-primary', '1')
+      submit.textContent = t('download.submit')
+      submit.onclick = async function () {
+        submit.disabled = true
+        submit.textContent = '下载中…'
+        try {
+          const res = await postJson('/download', {
+            repo: repo.fullName || repo.name || '',
+            dest: (destInput.value || '').trim() || '',
+          })
+          openInfoDialog(t('download.title'), res && res.text ? res.text : '下载完成。', t)
+        } catch (error) {
+          openInfoDialog(t('download.title'), '下载失败：' + (error && error.message ? error.message : String(error)), t)
+        }
+        document.body.removeChild(box)
+      }
+      foot.appendChild(cancel)
+      foot.appendChild(submit)
+      panel.appendChild(title)
+      panel.appendChild(hint)
+      panel.appendChild(destInput ? foot : foot)
+      box.appendChild(panel)
+      box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
+      document.body.appendChild(box)
+    }
+
+    /** 「传项目上去」表单：路径、仓库名（默认文件夹名）、公开/私有。 */
     function openUploadDialog(repo, t) {
       const box = document.createElement('div')
       box.className = 'gt-dialog-backdrop'
@@ -860,6 +929,20 @@ function describeFailure(status, body) {
           right.textContent = (r.private ? t('mine.private') : t('mine.public')) + (r.language ? ' · ' + r.language : '') + (r.stars ? ' · ⭐' + r.stars : '')
           row.appendChild(left)
           row.appendChild(right)
+          // 每行两个动作：把账号里的项目下载到本地 / 把这个仓库作为上传目标入口
+          const actDownload = document.createElement('button')
+          actDownload.type = 'button'
+          actDownload.className = 'gt-helper-btn'
+          actDownload.textContent = t('mine.download')
+          actDownload.style.marginLeft = '8px'
+          actDownload.onclick = function () { document.body.removeChild(box); openDownloadDialog({ fullName: r.fullName || r.name, name: r.name }, t) }
+          row.appendChild(actDownload)
+          const actUpload = document.createElement('button')
+          actUpload.type = 'button'
+          actUpload.className = 'gt-helper-btn'
+          actUpload.textContent = t('mine.upload')
+          actUpload.onclick = function () { document.body.removeChild(box); openUploadDialog({ name: r.name || '', fullName: r.fullName || r.name }, t) }
+          row.appendChild(actUpload)
           body.appendChild(row)
         })
       } else if (res && res.ok) {
@@ -1980,6 +2063,7 @@ function describeFailure(status, body) {
             data ? h('span', { className: 'gt-note' }, t('updated') + ' ' + localTime(data.generatedAt) + ' · ' + (data.cache === 'hit' ? t('cache.hit') : t('cache.fresh'))) : null,
             h('button', { type: 'button', className: 'gt-btn', onClick: refresh, disabled: state.status === 'loading' || state.status === 'refreshing' }, t('refresh')),
             h('button', { type: 'button', className: 'gt-btn', onClick: function () { onMine(t) }, title: t('mine.title') }, t('mine.title')),
+            h('button', { type: 'button', className: 'gt-btn', onClick: function () { openUploadDialog({ name: '', fullName: '' }, t) }, title: t('upload.title') }, t('mine.upload')),
           ),
         ),
       )

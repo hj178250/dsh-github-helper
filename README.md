@@ -49,6 +49,8 @@
 | `github_repo` | 在自己的账号下建仓 |
 | `github_git` | 克隆 / 提交 / 推送 / 查看状态 |
 | `github_upload` | 一键上传（建仓 + 克隆 + 拷贝 + 提交 + 推送） |
+| `github_download` | 应用下载：把 GitHub 项目源码包下载并解压到本地（默认在系统「下载」目录） |
+| `github_mine` | 浏览自己账号下的所有项目（仓库列表） |
 
 ## 面板 HTTP 接口
 
@@ -57,6 +59,8 @@
 - `POST /dsh-github-trending/login/start`：发起设备码登录
 - `GET /dsh-github-trending/login/status`：检查登录状态
 - `POST /dsh-github-trending/upload`：一键上传
+- `GET /dsh-github-trending/mine`：浏览自己账号的所有项目
+- `POST /dsh-github-trending/download`：应用下载（下载并解压项目源码包）
 
 ## 来源与致谢
 

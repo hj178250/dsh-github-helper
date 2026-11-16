@@ -13,7 +13,7 @@
  */
 
 import { getReport, normalizeCustomBoards, normalizeInstallQuality, reportQuery } from './lib/report.js'
-import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText } from './lib/github-ops.js'
+import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText, downloadRepo } from './lib/github-ops.js'
                                                                                   
 import { MAX_README_CHARS, firstParagraph, readAiConfig, translateIntros } from './lib/translate.js'
                                                                         
@@ -952,6 +952,31 @@ function helperUploadRoute(ctx)          {
   }
 }
 
+/** POST /dsh-github-trending/download — 应用下载：把项目源码包下载并解压到本地。 */
+function helperDownloadRoute(ctx)          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/download`,
+    methods: ['POST'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['POST'])) return
+      let body
+      try {
+        body = await readJsonBody(req)
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `请求内容有误：${error instanceof Error ? error.message : String(error)}` })
+        return
+      }
+      try {
+        const text = await downloadRepo(ctx, body || {})
+        sendJson(res, 200, { ok: true, text })
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `下载失败：${error instanceof Error ? error.message : String(error)}` })
+      }
+    },
+  }
+}
+
 /** GET /dsh-github-trending/mine — 浏览自己账号的所有项目（分页）。 */
 function helperMineRoute(ctx)          {
   return {
@@ -1104,14 +1129,14 @@ export function apply(ctx                 , config                   = {})      
       const disposers               = []
       for (const route of [
         reportRoute(ctx), translateRoute(ctx), aiRoute(ctx), aiInfoRoute(), statusRoute(),
-        helperLoginStartRoute(ctx), helperLoginStatusRoute(ctx), helperUploadRoute(ctx), helperMineRoute(ctx), helperExplainRoute(),
+        helperLoginStartRoute(ctx), helperLoginStatusRoute(ctx), helperUploadRoute(ctx), helperMineRoute(ctx), helperExplainRoute(), helperDownloadRoute(ctx),
       ]) {
         const disposeRoute = server.register(route)
         if (typeof disposeRoute === 'function') disposers.push(disposeRoute)
       }
       logInfo(
         ctx,
-        `routes mounted at ${ROUTE_BASE}/report, ${ROUTE_BASE}/translate, ${ROUTE_BASE}/ai, ${ROUTE_BASE}/ai/info, ${ROUTE_BASE}/status, ${ROUTE_BASE}/login/start, ${ROUTE_BASE}/login/status, ${ROUTE_BASE}/upload, ${ROUTE_BASE}/mine, ${ROUTE_BASE}/explain`,
+        `routes mounted at ${ROUTE_BASE}/report, ${ROUTE_BASE}/translate, ${ROUTE_BASE}/ai, ${ROUTE_BASE}/ai/info, ${ROUTE_BASE}/status, ${ROUTE_BASE}/login/start, ${ROUTE_BASE}/login/status, ${ROUTE_BASE}/upload, ${ROUTE_BASE}/mine, ${ROUTE_BASE}/explain, ${ROUTE_BASE}/download`,
       )
       return () => {
         for (const disposeRoute of disposers) {
