@@ -1,0 +1,10 @@
+# DSH GitHub 助手 —— Cordis 手动加载示例。
+# 通过 bundle 安装时不需要本文件：package.json -> dsh.bundle.patch -> cordis.patch.yml
+# 已声明插件插入点。这里仅用于自定义 profile / 代理预设中手工挂载。
+- id: dsh-github-helper
+  name: dsh-github-helper
+  config:
+    defaultSince: daily
+    defaultLimit: 50
+    # 令牌不写在这里：插件从 ~/.dsh/github-auth.json、环境变量
+    # GITHUB_TOKEN / GH_TOKEN 读取，也可通过设备码登录工具获取。

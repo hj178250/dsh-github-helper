@@ -1,0 +1,53 @@
+{
+  "name": "dsh-github-helper",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DSH GitHub 助手：中文热门项目卡片、小白解释、设备码一键登录、一键上传到自己的 GitHub。",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hj178250/dsh-github-helper.git"
+  },
+  "homepage": "https://github.com/hj178250/dsh-github-helper",
+  "bugs": {
+    "url": "https://github.com/hj178250/dsh-github-helper/issues"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "dsh",
+    "cordis",
+    "plugin",
+    "github",
+    "trending",
+    "chinese"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/",
+    "cordis.patch.yml",
+    "cordis.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

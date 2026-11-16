@@ -1,0 +1,21 @@
+# 参考仓库（仅本地开发用，不上传）
+_refs/
+
+# 依赖与构建产物
+node_modules/
+dist/
+*.tgz
+
+# 本地敏感文件 / 令牌
+github-auth.json
+github-token
+*.pem
+*.pfx
+
+# 冒烟测试脚本（仅本地开发用，不上传）
+_smoke.mjs
+_smoke_upload/
+
+# 系统文件
+.DS_Store
+Thumbs.db
