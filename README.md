@@ -51,7 +51,7 @@
 
 1. 选择目标配置（自动列出 `~/.dsh/profiles` 下的所有配置，`web` 置顶）。
 2. 从插件清单里点选一个（内置 12 个常用 DSH 插件），或手动填写 npm 包名 / `账号/仓库名` / `github:账号/仓库名`。
-3. 点「立即部署」，插件在后台调用 pnpm 安装，并把插件名写进该配置的启动清单，重启 DSH 后生效。
+3. 点「立即部署」完成安装。安装优先走 DSH 内置插件管理器（`ctx.remote.pluginManager.installBundle`），装完自动热重载、**无需重启 DSH**；内置管理器不可用或失败时，自动退回本机 pnpm 安装并写入启动清单，重启 DSH 生效。
 
 安装自动处理国内网络：git 走 gh-proxy 镜像、注入 git 到 PATH、修正 Windows PATH 大小写冲突，无需手动配置。也可直接对 DSH 说「把 xxx 装到 DSH」触发 `github_install`。
 
@@ -109,7 +109,7 @@ cd dsh-github-helper
 | `github_upload` | 一键上传（建仓 + 克隆 + 拷贝 + 提交 + 推送） |
 | `github_download` | 应用下载：把 GitHub 项目源码包下载并解压到本地（默认在系统「下载」目录） |
 | `github_mine` | 浏览自己账号下的所有项目（仓库列表） |
-| `github_install` | 一键装到 DSH：把插件装进指定配置并加入启动清单（`spec` / `repo` / `profile`） |
+| `github_install` | 一键装到 DSH：优先走内置插件管理器（热重载免重启），失败退回本机 pnpm 安装（`spec` / `repo` / `profile`） |
 | `github_profiles` | 列出本机所有可用的 DSH 配置 |
 | `github_catalog` | 列出内置的常用 DSH 插件清单 |
 
@@ -123,7 +123,7 @@ cd dsh-github-helper
 - `GET /dsh-github-trending/mine`：浏览自己账号的所有项目
 - `POST /dsh-github-trending/download`：应用下载（下载并解压项目源码包）
 - `GET /dsh-github-trending/profiles`：列出本机 DSH 配置
-- `GET /dsh-github-trending/catalog`：列出常用 DSH 插件清单
+- `GET /dsh-github-trending/catalog`：列出可一键安装的 DSH 插件清单（内置 + 本机已装 + 远程 catalog.json 动态合并）
 - `POST /dsh-github-trending/install`：一键装到 DSH（`spec` + `profile`）
 
 ## 来源与致谢

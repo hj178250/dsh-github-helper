@@ -210,7 +210,7 @@ function describeFailure(status, body) {
       'mine.download': '下载到本地',
       'action.install': '装到 DSH',
       'catalog.title': '一键装到 DSH',
-      'catalog.hint': '下面这些插件可以直接装进 DeepSeek Harness，点一下选好配置就能部署，重启 DSH 后生效。全程不输密码、不消耗对话 Token。',
+      'catalog.hint': '下面这些插件可以直接装进 DeepSeek Harness，点一下选好配置就能部署。优先走 DSH 内置插件管理器，装完自动热重载、无需重启。全程不输密码、不消耗对话 Token。',
       'catalog.profile': '装到哪个配置',
       'catalog.custom': '或手动输入插件规格（npm 包名 / 账号/仓库名）',
       'catalog.customHint': '留空则用上面选中的插件',
