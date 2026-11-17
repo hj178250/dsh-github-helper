@@ -13,11 +13,11 @@
  */
 
 import { getReport, normalizeCustomBoards, normalizeInstallQuality, reportQuery } from './lib/report.js'
-import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText, downloadRepo, installToDsh, listProfiles, loadPluginCatalog, DSH_PLUGIN_CATALOG } from './lib/github-ops.js'
+import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, aiExplain, aiScoreRepos, aiTranslateIntros, listMyRepos, mineToText, downloadRepo, startDownloadTask, getDownloadTask, cancelDownloadTask, listDownloadTasks, isDshPlugin, installToDsh, listProfiles, loadPluginCatalog, DSH_PLUGIN_CATALOG } from './lib/github-ops.js'
                                                                                   
-import { MAX_README_CHARS, firstParagraph, readAiConfig, translateIntros } from './lib/translate.js'
+import { MAX_README_CHARS, firstParagraph } from './lib/translate.js'
                                                                         
-import { AiNotConfiguredError, aiStatus, scoreRepos, sortByWeights } from './lib/ai.js'
+import { sortByWeights } from './lib/ai.js'
                                                                       
 import { searchRepos } from './lib/search.js'
                                                  
@@ -663,12 +663,6 @@ function translateRoute(ctx                 )          {
         sendJson(res, 400, { error: 'invalid JSON body' })
         return
       }
-      const config = readAiConfig(process.env)
-      if (!config.configured) {
-        // No key: stop here, never contact an external endpoint.
-        sendJson(res, 412, { configured: false, model: config.model })
-        return
-      }
       const started = Date.now()
       const query = reportQuery({
         since: body && body.since,
@@ -678,7 +672,7 @@ function translateRoute(ctx                 )          {
       })
       const recent = RECENT_REPORTS.get(recentKey(query))
       if (!recent) {
-        sendJson(res, 200, { configured: true, model: config.model, translated: 0, ms: Date.now() - started, items: [] })
+        sendJson(res, 200, { configured: true, model: 'built-in', translated: 0, ms: Date.now() - started, items: [] })
         return
       }
       const report = recent.report
@@ -703,13 +697,13 @@ function translateRoute(ctx                 )          {
         }))
       let translated                                  = {}
       try {
-        translated = await translateIntros(items, config)
+        translated = await aiTranslateIntros(ctx, items)
       } catch {
         translated = {}
       }
       sendJson(res, 200, {
         configured: true,
-        model: config.model,
+        model: 'built-in',
         translated: Object.keys(translated).length,
         ms: Date.now() - started,
         items: Object.entries(translated).map(([fullName, value]) =>
@@ -720,20 +714,10 @@ function translateRoute(ctx                 )          {
   }
 }
 
-/** Runtime AI config: panel config overrides the env defaults, key stays out of it. */
-function aiRuntimeConfig()           {
-  const base = readAiConfig(process.env)
-  return {
-    baseUrl: SETTINGS.aiBaseURL || base.baseUrl,
-    model: SETTINGS.aiModel || base.model,
-  }
-}
-
 /**
  * POST /dsh-github-trending/ai — natural-language filter over the cached report.
- *
- * Guard order: verb → same-origin → per-IP rate limit → body/prompt validation
- * → key presence. The no-key path (412) returns before any external request.
+ * 内置大模型打分，无需任何 API key；模型失败时得分为空，走兜底排序 + 搜索。
+ * Guard order: verb → same-origin → per-IP rate limit → body/prompt validation.
  */
 function aiRoute(ctx                 )          {
   return {
@@ -768,13 +752,6 @@ function aiRoute(ctx                 )          {
         sendJson(res, 400, { error: 'prompt must be 1-2000 characters' })
         return
       }
-      const config = aiRuntimeConfig()
-      const status = aiStatus(config)
-      if (!status.configured) {
-        // No key: stop here, never contact an external endpoint or GitHub Search.
-        sendJson(res, 412, { configured: false, model: status.model })
-        return
-      }
 
       const started = Date.now()
       const query = reportQuery({
@@ -787,7 +764,7 @@ function aiRoute(ctx                 )          {
       if (!recent) {
         sendJson(res, 200, {
           prompt,
-          model: status.model,
+          model: 'built-in',
           scored: 0,
           elapsedMs: Date.now() - started,
           items: [],
@@ -803,14 +780,11 @@ function aiRoute(ctx                 )          {
         description: repo.description ?? '',
         topics: Array.isArray(repo.topics) ? repo.topics : [],
       }))
+      // 内置大模型打分（无需任何 API key）；失败时得分为空，走兜底排序。
       let scores                            = {}
       try {
-        scores = await scoreRepos({ prompt, repos: inputs, config })
-      } catch (error) {
-        if (error instanceof AiNotConfiguredError) {
-          sendJson(res, 412, { configured: false, model: status.model })
-          return
-        }
+        scores = await aiScoreRepos(ctx, prompt, inputs)
+      } catch {
         scores = {}
       }
       const scored = Object.keys(scores).length
@@ -841,7 +815,7 @@ function aiRoute(ctx                 )          {
 
       sendJson(res, 200, {
         prompt,
-        model: status.model,
+        model: 'built-in',
         scored,
         elapsedMs: Date.now() - started,
         items: [...ordered, ...searchItems],
@@ -851,7 +825,7 @@ function aiRoute(ctx                 )          {
   }
 }
 
-/** GET /dsh-github-trending/ai/info — what the panel shows before the first call. */
+/** GET /dsh-github-trending/ai/info — 内置大模型链路，永远可用。 */
 function aiInfoRoute()          {
   return {
     kind: 'exact',
@@ -859,12 +833,10 @@ function aiInfoRoute()          {
     methods: ['GET'],
     handler(_req     , res     )       {
       if (methodRejected(_req, res, ['GET'])) return
-      const status = aiStatus(aiRuntimeConfig())
       sendJson(res, 200, {
-        configured: status.configured,
-        aiConfigured: status.configured,
-        host: status.host,
-        model: status.model,
+        configured: true,
+        aiConfigured: true,
+        model: 'built-in',
         searchThreshold: SETTINGS.searchThreshold,
         sortWeights: SETTINGS.sortWeights,
       })
@@ -872,7 +844,7 @@ function aiInfoRoute()          {
   }
 }
 
-/** GET /dsh-github-trending/status — read-only AI configuration for the panel. */
+/** GET /dsh-github-trending/status — 面板状态（AI 走内置大模型，永远可用）。 */
 function statusRoute()          {
   return {
     kind: 'exact',
@@ -880,11 +852,10 @@ function statusRoute()          {
     methods: ['GET'],
     handler(_req     , res     )       {
       if (methodRejected(_req, res, ['GET'])) return
-      const status = aiStatus(aiRuntimeConfig())
       sendJson(res, 200, {
-        configured: status.configured,
-        aiConfigured: status.configured,
-        model: status.model,
+        configured: true,
+        aiConfigured: true,
+        model: 'built-in',
         githubTokenConfigured: Boolean(SETTINGS.token),
       })
     },
@@ -1061,8 +1032,8 @@ function helperMineRoute(ctx)          {
   }
 }
 
-/** POST /dsh-github-trending/explain — 组织三段式解释上下文，供面板展示并递回 DSH。 */
-function helperExplainRoute()          {
+/** POST /dsh-github-trending/explain — 调 DSH 内置大模型生成三段式大白话解释，返回小窗展示。 */
+function helperExplainRoute(ctx)          {
   return {
     kind: 'exact',
     path: `${ROUTE_BASE}/explain`,
@@ -1073,11 +1044,123 @@ function helperExplainRoute()          {
       try {
         body = await readJsonBody(req)
       } catch (error) {
+        sendJson(res, 200, { ok: false, text: `请求内容有误：${error instanceof Error ? error.message : String(error)}`, ai: false })
+        return
+      }
+      // 优先用 DSH 内置大模型直接生成解释（用户无需申请任何 API key）。
+      let answer = null
+      try { answer = await aiExplain(ctx, body || {}) } catch { answer = null }
+      if (answer) {
+        sendJson(res, 200, { ok: true, ai: true, text: answer })
+        return
+      }
+      // 内置模型不可用时回退三段式提示模板（仍不打扰当前对话）。
+      sendJson(res, 200, { ok: true, ai: false, text: explainContext(body || {}) })
+    },
+  }
+}
+
+/** GET /dsh-github-trending/login/info — 登录状态 + 没有账号时的注册入口。 */
+function helperLoginInfoRoute(ctx)          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/login/info`,
+    methods: ['GET'],
+    async handler(_req     , res     )       {
+      if (methodRejected(_req, res, ['GET'])) return
+      let loggedIn = false
+      try { loggedIn = await isLoggedIn(ctx) } catch { loggedIn = false }
+      sendJson(res, 200, {
+        ok: true,
+        loggedIn,
+        signupUrl: 'https://github.com/signup',
+        verifyUrl: 'https://github.com/login/device',
+      })
+    },
+  }
+}
+
+/** POST /dsh-github-trending/download/start — 发起后台下载，立即返回任务 id。 */
+function helperDownloadStartRoute(ctx)          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/download/start`,
+    methods: ['POST'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['POST'])) return
+      let body
+      try {
+        body = await readJsonBody(req)
+      } catch (error) {
         sendJson(res, 200, { ok: false, text: `请求内容有误：${error instanceof Error ? error.message : String(error)}` })
         return
       }
-      const text = explainContext(body || {})
-      sendJson(res, 200, { ok: true, text })
+      try {
+        const task = startDownloadTask(ctx, body || {})
+        sendJson(res, 200, { ok: true, id: task.id, repo: task.repo, status: task.status, text: `已经开始在后台下载 ${task.repo}。` })
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `发起下载失败：${error instanceof Error ? error.message : String(error)}` })
+      }
+    },
+  }
+}
+
+/** GET /dsh-github-trending/download/status/:id — 查询单个下载任务进度。 */
+function helperDownloadStatusRoute()          {
+  return {
+    kind: 'prefix',
+    path: `${ROUTE_BASE}/download/status/`,
+    methods: ['GET'],
+    handler(req     , res     )       {
+      if (methodRejected(req, res, ['GET'])) return
+      const url = (req && req.url) || ''
+      const id = decodeURIComponent(String(url).split('/').pop() || '')
+      const task = getDownloadTask(id)
+      if (!task) {
+        sendJson(res, 200, { ok: false, text: '没有找到这个下载任务。' })
+        return
+      }
+      sendJson(res, 200, { ok: true, task })
+    },
+  }
+}
+
+/** GET /dsh-github-trending/download/list — 列出全部下载任务。 */
+function helperDownloadListRoute()          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/download/list`,
+    methods: ['GET'],
+    handler(_req     , res     )       {
+      if (methodRejected(_req, res, ['GET'])) return
+      let tasks = []
+      try { tasks = listDownloadTasks() } catch { tasks = [] }
+      sendJson(res, 200, { ok: true, tasks })
+    },
+  }
+}
+
+/** POST /dsh-github-trending/download/cancel — 取消一个下载任务。 */
+function helperDownloadCancelRoute()          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/download/cancel`,
+    methods: ['POST'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['POST'])) return
+      let body
+      try {
+        body = await readJsonBody(req)
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `请求内容有误：${error instanceof Error ? error.message : String(error)}` })
+        return
+      }
+      try {
+        const result = cancelDownloadTask(body && body.id)
+        sendJson(res, 200, result)
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `取消失败：${error instanceof Error ? error.message : String(error)}` })
+      }
     },
   }
 }
@@ -1211,8 +1294,10 @@ export function apply(ctx                 , config                   = {})      
       const disposers               = []
       const routeFactories = [
         () => reportRoute(ctx), () => translateRoute(ctx), () => aiRoute(ctx), () => aiInfoRoute(), () => statusRoute(),
-        () => helperLoginStartRoute(ctx), () => helperLoginStatusRoute(ctx), () => helperUploadRoute(ctx),
-        () => helperMineRoute(ctx), () => helperExplainRoute(), () => helperDownloadRoute(ctx),
+        () => helperLoginStartRoute(ctx), () => helperLoginStatusRoute(ctx), () => helperLoginInfoRoute(ctx),
+        () => helperUploadRoute(ctx), () => helperMineRoute(ctx), () => helperExplainRoute(ctx),
+        () => helperDownloadRoute(ctx), () => helperDownloadStartRoute(ctx), () => helperDownloadStatusRoute(),
+        () => helperDownloadListRoute(), () => helperDownloadCancelRoute(),
         () => helperProfilesRoute(), () => helperCatalogRoute(ctx), () => helperInstallRoute(ctx),
       ]
       // 自我维护：逐条构造并注册，单条失败不影响其余路由与面板加载。
@@ -1228,7 +1313,7 @@ export function apply(ctx                 , config                   = {})      
       }
       logInfo(
         ctx,
-        `routes mounted at ${ROUTE_BASE}/report, ${ROUTE_BASE}/translate, ${ROUTE_BASE}/ai, ${ROUTE_BASE}/ai/info, ${ROUTE_BASE}/status, ${ROUTE_BASE}/login/start, ${ROUTE_BASE}/login/status, ${ROUTE_BASE}/upload, ${ROUTE_BASE}/mine, ${ROUTE_BASE}/explain, ${ROUTE_BASE}/download, ${ROUTE_BASE}/profiles, ${ROUTE_BASE}/catalog, ${ROUTE_BASE}/install`,
+        `routes mounted at ${ROUTE_BASE}/report, ${ROUTE_BASE}/translate, ${ROUTE_BASE}/ai, ${ROUTE_BASE}/ai/info, ${ROUTE_BASE}/status, ${ROUTE_BASE}/login/start, ${ROUTE_BASE}/login/status, ${ROUTE_BASE}/login/info, ${ROUTE_BASE}/upload, ${ROUTE_BASE}/mine, ${ROUTE_BASE}/explain, ${ROUTE_BASE}/download, ${ROUTE_BASE}/download/start, ${ROUTE_BASE}/download/status/:id, ${ROUTE_BASE}/download/list, ${ROUTE_BASE}/download/cancel, ${ROUTE_BASE}/profiles, ${ROUTE_BASE}/catalog, ${ROUTE_BASE}/install`,
       )
       return () => {
         for (const disposeRoute of disposers) {

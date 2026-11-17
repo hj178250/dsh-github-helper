@@ -120,7 +120,7 @@ function describeFailure(status, body) {
       'card.sourcePopular': '全语言榜',
       'card.sourceFiller': '其他语言榜补位',
       'ai.entry': 'AI 辅助筛选',
-      'ai.needKey': '配置 API key 后可用',
+      'ai.needKey': '内置大模型直接可用，无需配置',
       'ai.placeholder': '给我找几个 dsh 的美观性插件',
       'ai.submit': '筛选',
       'ai.loading': '筛选中…',
@@ -129,24 +129,18 @@ function describeFailure(status, body) {
       'ai.match': '匹配度',
       'ai.searchGroup': '来自搜索 · 非本期榜单',
       'ai.searchBadge': '来自搜索',
-      'ai.err.412': '未配置 key',
+      'ai.err.412': '内置大模型暂不可用',
       'ai.err.403': '跨源请求被拒',
       'ai.err.429': '请求太频繁，请稍后再试',
       'ai.err.timeout': '请求超时，请稍后重试',
       'ai.err.generic': '筛选失败，请稍后重试',
-      'ai.consent.title': '发送前确认',
-      'ai.consent.host': '请求将发送到',
-      'ai.consent.hostFallback': '已配置的接口地址',
-      'ai.consent.payload': '发送内容：你输入的这句话 + 榜单里每个仓库的名称/简介/topics',
-      'ai.consent.deny': '不发送',
-      'ai.consent.allow': '同意并发送',
       'firstRun.title': '要不要配置以下功能（强烈推荐）',
       'firstRun.free.title': '① 什么都不配（默认）',
       'firstRun.free.body': '能看日/周/月趋势榜、13 个固定分类；项目介绍、技术栈、需要留意全在本地算，不发给任何人。限制：每小时只能查 GitHub 60 次，靠后的卡片拿不到热门标签和 README。',
       'firstRun.token.title': '② 配 GitHub token（可选，只读）',
       'firstRun.token.body': '好处：配额 60 → 5000 次/小时，靠后的卡片信息也完整。提醒：它是一把只读钥匙，别贴进公开仓库或聊天里。',
-      'firstRun.ai.title': '③ 配 AI key（可选）',
-      'firstRun.ai.body': '好处：「AI 辅助筛选」能用（一句话找项目），项目介绍从拼句变成真翻译，上手门槛也能写得更具体。提醒：你输入的那句话 + 榜单里每个仓库的名称/简介/标签会发给该服务商；每次筛选不到一分钱（v4.1f）。',
+      'firstRun.ai.title': '③ 无需任何配置',
+      'firstRun.ai.body': '「这是什么？」的大白话解释直接用 DeepSeek Harness 内置大模型生成，不需要申请任何 API key，不花一分钱。',
       'firstRun.wait': '注：打开后要等一会儿，这是正常的。首屏先出 50 张榜单卡，快的时候 2–3 秒、刚启动最慢约 10 秒。前 10 张的完整信息（README 摘要、许可证、上手门槛）还要十几到二十几秒才补上，卡片上方会有一行提示。AI 写的项目介绍要等完整信息到了才发请求，所以比卡片更晚出现，网络差的时候可能几十秒；它只替换文字，不会让卡片变空或报错。Steam++ 会比一般梯子慢一些。',
       'firstRun.use': '先这样用',
       'firstRun.help': '去看怎么配',
@@ -161,32 +155,36 @@ function describeFailure(status, body) {
       'help.github.steps': '1. 浏览器打开 https://github.com/settings/tokens\n2. 点右上角 Generate new token → Generate new token (classic)\n3. Note 填 github-trending；Expiration 选 90 days（到期后重新生成一次即可；选 No expiration 更省事，但一旦泄露永远有效，不推荐）；下面只勾 public_repo 这一项\n4. 页面底部点绿色 Generate token\n5. 复制页面上出现的 ghp_ 开头那串（只显示这一次，先粘到记事本）\n6. 选一种方式保存：\n   A. 文件方式（推荐）：打开资源管理器，在地址栏粘贴 %USERPROFILE%\\.dsh 回车；\n      如果没有 .dsh 文件夹就先新建；在里面新建文本文件，改名成 github-token（去掉 .txt）；\n      用记事本打开，把 ghp_ 那串粘进去，保存。\n   B. 环境变量方式：Win+R 输入 powershell 回车，粘贴 setx GITHUB_TOKEN "ghp_你的token" 回车；\n      然后彻底退出 DSH（托盘右键退出）再打开。\n7. 回到面板，教程区应显示「GitHub token：已配置」',
       'help.github.faq.title': '常见问题',
       'help.github.faq': '401/403 → token 过期或被吊销，重新生成\n显示未配置 → 文件名多了 .txt 或放错目录\n不想用了 → 删文件或 setx 置空\n· token 过期后：面板会显示「GitHub token：未配置」，重新生成一个换上即可，不用改任何代码',
-      'help.ai.title': 'AI key',
-      'help.ai.file': '文件位置：%USERPROFILE%\\.dsh\\github-trending-ai-key',
-      'help.ai.steps': '第 1 步　注册 / 登录\n1. 浏览器打开 https://platform.deepseek.com\n2. 手机号或邮箱注册，已有账号直接登录。\n   注意：这里的账号和你平时登录 DSH 的账号不是一回事，API 是按用量单独计费的。\n\n第 2 步　充值（提示余额不足时再做）\n1. 左侧菜单点「充值」，选最小额度付款。\n2. 只跑翻译和筛选的话，几块钱能用很久；一次筛选不到一分钱。\n\n第 3 步　创建 key\n1. 左侧菜单点「API keys」，再点「创建 API key」。\n2. 名字随便填（例如 dsh-trending），点创建。\n3. 弹窗里出现 sk- 开头的一串字符，这是唯一一次显示的机会，点旁边的复制按钮。\n   关掉弹窗就只能重新创建，所以先粘到记事本里。\n\n第 4 步　存到本机（两种方式，选一种）\n\n方式 A：文件方式（推荐，不用重新登录）\n1. 按 Win+E 打开资源管理器，在顶部地址栏粘贴 %USERPROFILE%\\.dsh 回车。\n2. 如果提示找不到：先打开 %USERPROFILE%，点「查看」→「显示」→ 勾上「隐藏的项目」，就能看到 .dsh 文件夹。\n3. 在 .dsh 文件夹里右键 → 新建 → 文本文档。\n4. 把文件名改成 github-trending-ai-key（必须把结尾的 .txt 删掉；看不到 .txt 就先在「查看」里勾上「文件扩展名」）。\n5. 双击打开这个文件，把第 3 步复制的 sk- 那串粘进去，Ctrl+S 保存后关闭。\n\n方式 B：环境变量方式\n1. 按 Win+R，输入 powershell 回车。\n2. 粘贴这一行后回车：setx DSH_GITHUB_TRENDING_AI_KEY "sk-你的key"\n3. 看到「成功: 指定的值已保存」就说明写进去了。\n4. 在托盘图标上右键彻底退出 DSH，再重新打开（环境变量只在启动时读取一次）。\n5. 如果面板仍显示「未配置」：说明 DSH 是从旧进程启动的，重启一次电脑最稳妥。\n\n第 5 步　验证\n1. 回到面板，拉到最底部展开「怎么配置」，应显示「AI key：已配置」。\n2. 在搜索框旁点「AI 辅助筛选」，输入一句「给我找几个 dsh 的美观性插件」。\n3. 第一次会弹出「发送前确认」，点「同意并发送」，稍等几秒就能看到每个仓库的匹配度和理由。\n\n常见问题\n· 提示 401 或余额不足：回第 2 步充值即可。\n· 明明存了却显示未配置：多半是文件名多了 .txt，或放错了目录（正确位置是 C:\\Users\\你的用户名\\.dsh）。\n· 不想再用了：删掉那个文件，或把环境变量设为空。\n· 换别的服务商：在插件配置里填 aiBaseURL 与 aiModel（默认 https://api.deepseek.com 与 deepseek-flash）。',
-      'ai.help.title': '如何配置 API',
-      'ai.help.state': '状态',
-      'ai.help.expand': '展开',
-      'ai.help.collapse': '收起',
-      'ai.help.keyLead': 'Key 二选一，面板只显示配置状态，不回显 key：',
-      'ai.help.keyEnv': '环境变量：DSH_GITHUB_TRENDING_AI_KEY',
-      'ai.help.keyFile': '或写入文件（Windows）：%USERPROFILE%\\.dsh\\github-trending-ai-key',
-      'ai.help.base': '接口地址 / 模型可用 aiBaseURL / aiModel 配置，默认 https://api.deepseek.com / deepseek-flash。',
-      'ai.help.note': '不配也能用，只是没有 AI 筛选与翻译。',
+      'help.builtin.title': '内置大模型（无需配置，无需申请 API）',
+      'help.builtin.body': '「这是什么？」的三段式大白话解释由 DeepSeek Harness 自带的大模型直接生成：\n· 不需要注册任何第三方服务\n· 不需要创建、充值、保存任何 API key\n· 点卡片上的「这是什么？」按钮，稍等几秒即可在小窗口看到解释\n· 解释只显示在插件自己的小窗里，不会打扰你正在工作的对话窗口',
       'ai.status.configured': '已配置',
       'ai.status.unconfigured': '未配置',
       'nav.title': 'GitHub 助手',
       'title': 'GitHub 助手 · 中文热门项目',
-      'subtitle': '中文热门卡片 · 大白话解释 · 一键下载应用到自己的 GitHub',
+      'subtitle': '中文热门卡片 · 内置大模型大白话解释 · 一键下载 / 一键安装',
       'action.what': '这是什么？',
       'action.upload': '应用下载',
       'action.login': '登录 GitHub',
       'action.loginStatus': '检查登录状态',
       'explain.title': '大白话解释',
+      'explain.loading': '正在用 DSH 内置大模型解释，请稍等几秒…',
+      'explain.aiTag': '由 DSH 内置大模型生成，无需申请任何 API',
+      'login.title': '登录 GitHub',
+      'login.loading': '正在发起登录…',
+      'login.deviceHint': '请打开 github.com/login/device，输入上面的授权码完成登录（全程不输密码）。',
+      'login.signup': '没有账号？一键注册',
+      'login.verify': '去授权',
       'download.title': '应用下载',
-      'download.dest': '保存到哪个文件夹',
-      'download.submit': '开始下载',
-      'download.hint': '会把项目的源码压缩包下载并解压到你选的文件夹，不经过对话、不消耗 Token。',
+      'download.starting': '正在发起后台下载…',
+      'download.running': '正在下载…',
+      'download.progress': '已下载 {received} / {total}',
+      'download.extracting': '下载完成，正在解压…',
+      'download.doneTitle': '下载完成',
+      'download.folder': '已保存到：',
+      'download.cancelled': '已取消',
+      'download.failed': '下载失败',
+      'download.cancel': '取消下载',
+      'download.hint': '会在后台下载项目的源码压缩包并自动解压，不经过对话、不消耗 Token、不卡界面。',
       'upload.title': '传到我的 GitHub',
       'upload.path': '本地项目文件夹路径',
       'upload.name': '仓库名（默认文件夹名）',
@@ -209,6 +207,8 @@ function describeFailure(status, body) {
       'mine.upload': '传项目上去',
       'mine.download': '下载到本地',
       'action.install': '装到 DSH',
+      'install.cardTitle': '一键装到 DSH',
+      'install.cardBtn': '装到 DSH',
       'catalog.title': '一键装到 DSH',
       'catalog.hint': '下面这些插件可以直接装进 DeepSeek Harness，点一下选好配置就能部署。优先走 DSH 内置插件管理器，装完自动热重载、无需重启。全程不输密码、不消耗对话 Token。',
       'catalog.profile': '装到哪个配置',
@@ -279,7 +279,7 @@ function describeFailure(status, body) {
       'card.sourcePopular': 'All languages',
       'card.sourceFiller': 'Other language board',
       'ai.entry': 'AI assist',
-      'ai.needKey': 'Available after configuring an API key',
+      'ai.needKey': 'No configuration needed — uses the built-in model',
       'ai.placeholder': 'Find me a few good-looking dsh plugins',
       'ai.submit': 'Filter',
       'ai.loading': 'Filtering…',
@@ -288,24 +288,18 @@ function describeFailure(status, body) {
       'ai.match': 'Match',
       'ai.searchGroup': 'From search · not in this board',
       'ai.searchBadge': 'From search',
-      'ai.err.412': 'AI key is not configured',
+      'ai.err.412': 'Built-in model is temporarily unavailable',
       'ai.err.403': 'Cross-origin request rejected',
       'ai.err.429': 'Too many requests, please try again later',
       'ai.err.timeout': 'Request timed out, please try again later',
       'ai.err.generic': 'AI filter failed, please try again later',
-      'ai.consent.title': 'Confirm before sending',
-      'ai.consent.host': 'Request will be sent to',
-      'ai.consent.hostFallback': 'the configured API base URL',
-      'ai.consent.payload': 'Payload: your sentence + each repository name/description/topics on this board',
-      'ai.consent.deny': 'Do not send',
-      'ai.consent.allow': 'Agree and send',
       'firstRun.title': 'Configure these features? (Strongly recommended)',
       'firstRun.free.title': '① Configure nothing (default)',
       'firstRun.free.body': 'You can browse daily/weekly/monthly trending boards and the 13 fixed categories; intros, tech stack and watch-outs are computed locally and sent nowhere. Limit: only 60 GitHub requests per hour, and cards further down miss topics and README.',
       'firstRun.token.title': '② Add a GitHub token (optional, read-only)',
       'firstRun.token.body': 'Benefit: the quota rises from 60 to 5000 requests per hour and later cards get full details. Warning: it is a read-only key; never paste it into a public repository or a chat.',
-      'firstRun.ai.title': '③ Add an AI key (optional)',
-      'firstRun.ai.body': 'Benefit: "AI assist" works (find projects in one sentence), intros become real translations instead of assembled sentences, and the onboarding hints get more specific. Warning: your sentence + each repository name/description/topics on the board are sent to that provider; each filter costs well under a cent (v4.1f).',
+      'firstRun.ai.title': '③ No configuration needed',
+      'firstRun.ai.body': 'The "What is this?" plain-language explanation is generated by the model built into DeepSeek Harness — no API key, no signup, no cost.',
       'firstRun.wait': 'Note: the first load takes a moment, and that is expected. The 50 board cards appear first (2–3 s once warm, up to ~10 s right after start). Full details for the first 10 cards (README excerpt, licence, onboarding) need another ten to twenty-odd seconds, and a line above the list shows that. The model-written intro is only requested once the full details are in, so it lands later than the cards and can take tens of seconds on a slow link; it only swaps text and never blanks a card or shows an error. Steam++ is slower than a normal proxy.',
       'firstRun.use': 'Use as is',
       'firstRun.help': 'Show me how',
@@ -320,18 +314,8 @@ function describeFailure(status, body) {
       'help.github.steps': '1. Open https://github.com/settings/tokens in a browser\n2. Top right: Generate new token → Generate new token (classic)\n3. Note: github-trending; Expiration: 90 days; tick only public_repo\n4. Click the green Generate token at the bottom\n5. Copy the ghp_ token shown (seen only once; paste it into Notepad first)\n6. Save it one of two ways:\n   A. File (recommended): open Explorer, paste %USERPROFILE%\\.dsh in the address bar and press Enter;\n      create the .dsh folder if missing; create a text file there and rename it to github-token (drop .txt);\n      open it in Notepad, paste the ghp_ token and save.\n   B. Environment variable: Win+R, type powershell, press Enter, then paste setx GITHUB_TOKEN "ghp_your_token";\n      fully quit DSH (tray icon → Quit) and reopen it.\n7. Back in the panel, the tutorial should show "GitHub token: Configured"',
       'help.github.faq.title': 'FAQ',
       'help.github.faq': '401/403 → the token expired or was revoked; generate a new one\nShows not configured → the file name still has .txt or is in the wrong folder\nNo longer needed → delete the file or clear it with setx',
-      'help.ai.title': 'AI key',
-      'help.ai.file': 'File location: %USERPROFILE%\\.dsh\\github-trending-ai-key',
-      'help.ai.steps': 'Step 1: Sign up / sign in\n1. Open https://platform.deepseek.com in a browser\n2. Register with a phone number or email, or sign in.\n   Note: this account is separate from your DSH login; the API is billed by usage.\n\nStep 2: Top up (only when told the balance is low)\n1. Click "Top up" in the left menu and pay the smallest amount.\n2. A few dollars lasts a long time for translation and filtering; one filter costs under a cent.\n\nStep 3: Create a key\n1. Click "API keys" in the left menu, then "Create API key".\n2. Pick any name (e.g. dsh-trending) and create it.\n3. The dialog shows a sk- string once; click the copy button next to it.\n   Closing the dialog means creating a new one, so paste it into Notepad first.\n\nStep 4: Store it locally (pick one)\n\nOption A: File (recommended, no re-login)\n1. Press Win+E, paste %USERPROFILE%\\.dsh in the address bar and press Enter.\n2. If it is missing: open %USERPROFILE%, View → Show → Hidden items to reveal .dsh.\n3. Right-click in .dsh → New → Text Document.\n4. Rename it to github-trending-ai-key (delete the .txt suffix; enable file name extensions under View if needed).\n5. Open it, paste the sk- string from Step 3, press Ctrl+S and close.\n\nOption B: Environment variable\n1. Press Win+R, type powershell and press Enter.\n2. Paste this line and press Enter: setx DSH_GITHUB_TRENDING_AI_KEY "sk_your_key"\n3. "SUCCESS: Specified value was saved" means it worked.\n4. Fully quit DSH from the tray icon and reopen it (environment variables are read once at startup).\n5. If the panel still says "Not configured", DSH was started by an old process; a reboot is the safest fix.\n\nStep 5: Verify\n1. Back in the panel, expand "How to configure" at the bottom; it should show "AI key: Configured".\n2. Click "AI assist" next to the search box and type "Find me a few good-looking dsh plugins".\n3. The first time, "Confirm before sending" appears; click "Agree and send" and wait a few seconds for match scores and reasons.\n\nFAQ\n· 401 or low balance: top up in Step 2.\n· Saved but still shown as not configured: usually the file name still has .txt or it is in the wrong folder (the correct location is C:\\Users\\your-name\\.dsh).\n· No longer needed: delete the file or clear the environment variable.\n· Another provider: set aiBaseURL and aiModel in the plugin config (defaults: https://api.deepseek.com and deepseek-flash).',
-      'ai.help.title': 'How to configure the API',
-      'ai.help.state': 'Status',
-      'ai.help.expand': 'Expand',
-      'ai.help.collapse': 'Collapse',
-      'ai.help.keyLead': 'Provide the key one of two ways; the panel shows the status only, never the key:',
-      'ai.help.keyEnv': 'Environment variable: DSH_GITHUB_TRENDING_AI_KEY',
-      'ai.help.keyFile': 'Or write it to a file (Windows): %USERPROFILE%\\.dsh\\github-trending-ai-key',
-      'ai.help.base': 'Set aiBaseURL / aiModel to override the endpoint/model; defaults are https://api.deepseek.com / deepseek-flash.',
-      'ai.help.note': 'Everything else works without a key — only AI filtering and translation are unavailable.',
+      'help.builtin.title': 'Built-in model (no configuration, no API key required)',
+      'help.builtin.body': 'The "What is this?" plain-language explanation is generated by the model built into DeepSeek Harness:\n· No third-party service to sign up for\n· No API key to create, top up, or store\n· Click "What is this?" on a card and wait a few seconds for the answer in a small window\n· The answer only appears in this plugin\u2019s own window and never disturbs the conversation you are working in',
       'ai.status.configured': 'Configured',
       'ai.status.unconfigured': 'Not configured',
     }
@@ -543,34 +527,7 @@ function describeFailure(status, body) {
       }
     }
 
-    /**
-     * One-time consent for the AI filter. The dialog is shown before the first
-     * outbound `/ai` request; agreeing records this key. A missing, unreadable
-     * or throwing storage simply means "ask again next time" — never a crash.
-     */
-    const AI_CONSENT_KEY = 'dsh-github-trending:ai-consent'
     const AI_TIMEOUT_MS = 30000
-
-    function readAiConsent() {
-      const store = uiStorage()
-      if (!store) return false
-      try {
-        const raw = store.getItem(AI_CONSENT_KEY)
-        return raw === '1' || raw === 'true' || raw === 'granted'
-      } catch (error) {
-        return false
-      }
-    }
-
-    function writeAiConsent() {
-      const store = uiStorage()
-      if (!store) return
-      try {
-        store.setItem(AI_CONSENT_KEY, '1')
-      } catch (error) {
-        /* storage is best-effort; the next submit asks again */
-      }
-    }
 
     /**
      * First-run onboarding. Only the explicit "下次不再提示" checkbox writes the
@@ -613,7 +570,7 @@ function describeFailure(status, body) {
       }
     }
 
-    /* ---------- DSH GitHub 助手：解释 / 登录 / 上传 交互 ---------- */
+    /* ---------- DSH GitHub 助手：解释 / 登录 / 下载 / 上传 交互 ---------- */
 
     function postJson(path, payload) {
       return fetch(BASE + path, {
@@ -630,68 +587,77 @@ function describeFailure(status, body) {
     /** 客户端上下文，在 apply() 中保存，供卡片按钮调用核心服务。 */
     let HOST_CTX = null
 
-    /** 把文字作为用户消息直接投递到当前对话，触发当前大模型；成功返回 true。 */
-    function sendToConversation(text) {
-      try {
-        const ctx = HOST_CTX
-        if (!ctx) return false
-        // 运行时按需获取会话服务，取不到就回退弹窗，不影响卡片本身加载。
-        const sessions = (typeof ctx.get === 'function' && ctx.get('sessions')) || ctx.sessions
-        const uiSession = (typeof ctx.get === 'function' && ctx.get('uiSession')) || ctx.uiSession
-        if (!sessions || !uiSession || !uiSession.adapter || !uiSession.adapter.current) return false
-        const snapshot = uiSession.adapter.current.getSnapshot()
-        const sessionId = snapshot && snapshot.key
-        if (!sessionId) return false
-        const scope = sessions.scope(sessionId)
-        const conversation = scope && scope.get('conversation')
-        if (!conversation || typeof conversation.send !== 'function') return false
-        const sent = conversation.send(text)
-        if (sent && typeof sent.catch === 'function') sent.catch(function () {})
-        return true
-      } catch (error) {
-        return false
-      }
-    }
-
-    /** 构造交给大模型解释项目的三段式提示。 */
-    function buildExplainPrompt(repo) {
-      const fullName = repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name) || ''
-      const lines = [
-        '请用大白话解释下面这个 GitHub 热门项目，严格按三段式输出：',
-        '① 它到底是干什么的（不超过 30 字）',
-        '② 普通人能拿它做什么（1-2 个具体场景）',
-        '③ 原理大概是怎么回事（用生活里的类比，不要讲代码细节）',
-        '',
-        '项目名称：' + (repo.name || ''),
-        '项目全名：' + fullName,
-        '分类：' + (repo.categoryZh || repo.category || ''),
-        '编程语言：' + (repo.language || ''),
-        '项目描述：' + (repo.description || repo.tldr || ''),
-      ]
-      if (repo.readmeSnippet) lines.push('README 片段：' + repo.readmeSnippet)
-      return lines.join('\n')
-    }
-
-    /** 卡片的「这是什么？」入口：把项目信息直接交给当前对话的大模型解释。 */
+    /**
+     * 卡片的「这是什么？」入口：弹出插件自己的小窗，由 DSH 内置大模型
+     * 在后台生成三段式大白话解释，完全不打扰用户正在工作的对话窗口。
+     */
     async function onExplain(repo, t) {
-      const prompt = buildExplainPrompt(repo)
-      if (sendToConversation(prompt)) return
-      // 没有可用的实时对话时，退回本地展示已准备好的解释上下文。
-      let text
-      try {
-        const res = await postJson('/explain', {
-          fullName: repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name),
-          name: repo.name,
-          description: repo.description || repo.tldr || '',
-          readmeSnippet: repo.readmeSnippet || '',
-          category: repo.categoryZh || repo.category || '',
-          language: repo.language || '',
-        })
-        text = res && res.text ? res.text : '解释内容生成失败，请稍后再试。'
-      } catch (error) {
-        text = '解释内容生成失败：' + (error && error.message ? error.message : String(error))
+      const payload = {
+        fullName: repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name),
+        name: repo.name,
+        description: repo.description || repo.tldr || '',
+        readmeSnippet: repo.readmeSnippet || '',
+        category: repo.categoryZh || repo.category || '',
+        language: repo.language || '',
       }
-      openInfoDialog(t('explain.title'), text, t)
+      const box = document.createElement('div')
+      box.className = 'gt-dialog-backdrop'
+      const panel = document.createElement('div')
+      panel.className = 'gt-dialog'
+      const head = document.createElement('div')
+      head.className = 'gt-dialog-head'
+      const titleEl = document.createElement('h3')
+      titleEl.className = 'gt-dialog-title'
+      titleEl.textContent = t('explain.title') + '：' + (payload.fullName || payload.name || '')
+      const close = document.createElement('button')
+      close.className = 'gt-btn'
+      close.textContent = t('common.close')
+      close.onclick = function () { closed = true; if (box.parentNode) document.body.removeChild(box) }
+      head.appendChild(titleEl)
+      head.appendChild(close)
+      const bodyWrap = document.createElement('div')
+      bodyWrap.className = 'gt-dialog-body'
+      const statusEl = document.createElement('p')
+      statusEl.className = 'gt-explain-status'
+      statusEl.textContent = t('explain.loading')
+      const body = document.createElement('pre')
+      body.className = 'gt-explain-text'
+      body.style.display = 'none'
+      bodyWrap.appendChild(statusEl)
+      bodyWrap.appendChild(body)
+      const foot = document.createElement('div')
+      foot.className = 'gt-dialog-foot'
+      const copy = document.createElement('button')
+      copy.className = 'gt-btn'
+      copy.textContent = t('common.copy')
+      copy.style.display = 'none'
+      copy.onclick = function () { copyHelpText(body.textContent || '') }
+      foot.appendChild(copy)
+      panel.appendChild(head)
+      panel.appendChild(bodyWrap)
+      panel.appendChild(foot)
+      box.appendChild(panel)
+      box.onclick = function (event) { if (event.target === box) { closed = true; document.body.removeChild(box) } }
+      document.body.appendChild(box)
+      let closed = false
+      const show = function (text, isAi) {
+        if (closed) return
+        statusEl.textContent = isAi ? '✓ ' + t('explain.aiTag') : ''
+        statusEl.style.display = isAi ? '' : 'none'
+        body.textContent = text
+        body.style.display = ''
+        copy.style.display = ''
+      }
+      try {
+        const res = await postJson('/explain', payload)
+        if (res && res.ok && res.text) {
+          show(res.text, res.ai === true)
+        } else {
+          show((res && res.text) || '解释内容生成失败，请稍后再试。', false)
+        }
+      } catch (error) {
+        show('解释内容生成失败：' + (error && error.message ? error.message : String(error)), false)
+      }
     }
 
     /** Generic modal used for explanation text, login hints and upload progress. */
@@ -735,85 +701,209 @@ function describeFailure(status, body) {
       document.body.appendChild(box)
     }
 
-    /** 卡片的「应用下载」入口：检查登录状态，然后展示下载确认表单。 */
+    /** 卡片的「应用下载」入口：未登录先走设备码登录弹窗，已登录直接开后台下载任务。 */
     async function onUpload(repo, t) {
       let state
       try { state = await getJson('/login/status') } catch (error) { state = { ok: false } }
       if (!state || state.loggedIn !== true) {
-        let loginText = '正在发起登录…'
-        try {
-          const res = await postJson('/login/start', {})
-          loginText = res && res.text ? res.text : loginText
-        } catch (error) {
-          loginText = '发起登录失败：' + (error && error.message ? error.message : String(error))
-        }
-        openInfoDialog(t('action.login'), loginText, t)
+        openLoginDialog(t)
         return
       }
-      openDownloadDialog(repo, t)
+      startBackgroundDownload(repo, t)
     }
 
-    /** Download form: pick a folder, then fetch and unzip the repo source. */
-    function openDownloadDialog(repo, t) {
+    /** 登录小窗：设备码授权 + 一键注册入口，全程不输密码。 */
+    function openLoginDialog(t) {
       const box = document.createElement('div')
       box.className = 'gt-dialog-backdrop'
       const panel = document.createElement('div')
       panel.className = 'gt-dialog'
       const title = document.createElement('h3')
       title.className = 'gt-dialog-title'
-      title.textContent = t('download.title') + '：' + (repo.fullName || repo.name || '')
-      const hint = document.createElement('div')
-      hint.className = 'gt-field-hint'
-      hint.textContent = t('download.hint')
-      const mkField = function (label, placeholder, value) {
-        const field = document.createElement('div')
-        field.className = 'gt-field'
-        const lab = document.createElement('label')
-        lab.className = 'gt-field-label'
-        lab.textContent = label
-        const input = document.createElement('input')
-        input.className = 'gt-field-input'
-        input.setAttribute('type', 'text')
-        input.setAttribute('placeholder', placeholder || '')
-        input.value = value || ''
-        field.appendChild(lab)
-        field.appendChild(input)
-        panel.appendChild(field)
-        return input
-      }
-      const destInput = mkField(t('download.dest'), 'C:\\Users\\你的用户名\\Downloads', '')
+      title.textContent = t('login.title')
+      const body = document.createElement('div')
+      body.className = 'gt-dialog-body'
+      const status = document.createElement('p')
+      status.className = 'gt-explain-status'
+      status.textContent = t('login.loading')
+      const deviceCode = document.createElement('pre')
+      deviceCode.className = 'gt-login-code'
+      deviceCode.style.display = 'none'
+      body.appendChild(status)
+      body.appendChild(deviceCode)
       const foot = document.createElement('div')
       foot.className = 'gt-dialog-foot'
-      const cancel = document.createElement('button')
-      cancel.className = 'gt-btn'
-      cancel.textContent = t('upload.cancel')
-      cancel.onclick = function () { document.body.removeChild(box) }
-      const submit = document.createElement('button')
-      submit.className = 'gt-btn'
-      submit.setAttribute('data-primary', '1')
-      submit.textContent = t('download.submit')
-      submit.onclick = async function () {
-        submit.disabled = true
-        submit.textContent = '下载中…'
-        try {
-          const res = await postJson('/download', {
-            repo: repo.fullName || repo.name || '',
-            dest: (destInput.value || '').trim() || '',
-          })
-          openInfoDialog(t('download.title'), res && res.text ? res.text : '下载完成。', t)
-        } catch (error) {
-          openInfoDialog(t('download.title'), '下载失败：' + (error && error.message ? error.message : String(error)), t)
-        }
-        document.body.removeChild(box)
+      const signup = document.createElement('button')
+      signup.className = 'gt-btn'
+      signup.textContent = t('login.signup')
+      signup.onclick = function () {
+        if (typeof window !== 'undefined' && window.open) window.open('https://github.com/signup', '_blank')
       }
-      foot.appendChild(cancel)
-      foot.appendChild(submit)
+      const verify = document.createElement('button')
+      verify.className = 'gt-btn'
+      verify.setAttribute('data-primary', '1')
+      verify.style.display = 'none'
+      verify.textContent = t('login.verify')
+      verify.onclick = function () {
+        if (typeof window !== 'undefined' && window.open) window.open('https://github.com/login/device', '_blank')
+      }
+      foot.appendChild(signup)
+      foot.appendChild(verify)
       panel.appendChild(title)
-      panel.appendChild(hint)
-      panel.appendChild(destInput ? foot : foot)
+      panel.appendChild(body)
+      panel.appendChild(foot)
       box.appendChild(panel)
       box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
       document.body.appendChild(box)
+      // 发起设备码登录并轮询状态，直到已登录或用户关闭窗口。
+      let closed = false
+      let started = false
+      const finish = async function (ok) {
+        if (closed) return
+        closed = true
+        if (box.parentNode) document.body.removeChild(box)
+        if (!ok) return
+        try { openMineDialog(t, await getJson('/mine')) } catch { /* 打开我的项目失败不阻塞 */ }
+      }
+      const poll = async function () {
+        for (let round = 0; round < 200 && !closed; round += 1) {
+          let res
+          try { res = await getJson('/login/status') } catch { res = null }
+          if (res && res.ok && res.loggedIn === true) { finish(true); return }
+          if (res && res.text && !started) {
+            started = true
+            status.textContent = res.text
+            deviceCode.style.display = ''
+            verify.style.display = ''
+            status.textContent = t('login.deviceHint')
+          }
+          await new Promise(function (resolve) { setTimeout(resolve, 3000) })
+        }
+        finish(false)
+      }
+      postJson('/login/start', {}).catch(function () {})
+      poll()
+    }
+
+    /**
+     * 后台下载任务小窗：POST /download/start 拿任务 id，然后轮询进度，
+     * 显示实时进度条，不再阻塞面板，也不会让卡片卡死。
+     */
+    function startBackgroundDownload(repo, t) {
+      const repoSpec = repo.fullName || repo.name || ''
+      const box = document.createElement('div')
+      box.className = 'gt-dialog-backdrop'
+      const panel = document.createElement('div')
+      panel.className = 'gt-dialog'
+      const title = document.createElement('h3')
+      title.className = 'gt-dialog-title'
+      title.textContent = t('download.title') + '：' + repoSpec
+      const body = document.createElement('div')
+      body.className = 'gt-dialog-body'
+      const status = document.createElement('p')
+      status.className = 'gt-explain-status'
+      status.textContent = t('download.starting')
+      const barWrap = document.createElement('div')
+      barWrap.className = 'gt-progress'
+      const bar = document.createElement('div')
+      bar.className = 'gt-progress-bar'
+      bar.style.width = '0%'
+      barWrap.appendChild(bar)
+      const meta = document.createElement('p')
+      meta.className = 'gt-progress-meta'
+      meta.textContent = ''
+      const result = document.createElement('pre')
+      result.className = 'gt-explain-text'
+      result.style.display = 'none'
+      body.appendChild(status)
+      body.appendChild(barWrap)
+      body.appendChild(meta)
+      body.appendChild(result)
+      const foot = document.createElement('div')
+      foot.className = 'gt-dialog-foot'
+      let taskId = null
+      let closed = false
+      const closeBtn = document.createElement('button')
+      closeBtn.className = 'gt-btn'
+      closeBtn.textContent = t('common.close')
+      closeBtn.onclick = function () { closed = true; document.body.removeChild(box) }
+      const cancelBtn = document.createElement('button')
+      cancelBtn.className = 'gt-btn'
+      cancelBtn.textContent = t('download.cancel')
+      cancelBtn.onclick = async function () {
+        if (taskId) { try { await postJson('/download/cancel', { id: taskId }) } catch { /* 取消失败不阻塞 */ } }
+        closed = true
+        if (box.parentNode) document.body.removeChild(box)
+      }
+      foot.appendChild(cancelBtn)
+      foot.appendChild(closeBtn)
+      panel.appendChild(title)
+      panel.appendChild(body)
+      panel.appendChild(foot)
+      box.appendChild(panel)
+      box.onclick = function (event) { if (event.target === box) { closed = true; document.body.removeChild(box) } }
+      document.body.appendChild(box)
+      const fmtBytes = function (n) {
+        const v = Number(n) || 0
+        if (v >= 1024 * 1024) return (v / (1024 * 1024)).toFixed(1) + ' MB'
+        if (v >= 1024) return (v / 1024).toFixed(0) + ' KB'
+        return v + ' B'
+      }
+      const paint = function (task) {
+        if (!task) return
+        const pct = Math.max(0, Math.min(100, Math.round(task.percent || 0)))
+        bar.style.width = pct + '%'
+        if (task.status === 'downloading') {
+          status.textContent = t('download.running')
+          meta.textContent = t('download.progress')
+            .replace('{received}', fmtBytes(task.received))
+            .replace('{total}', task.total ? fmtBytes(task.total) : '…')
+        } else if (task.status === 'extracting') {
+          status.textContent = t('download.extracting')
+          meta.textContent = ''
+        } else if (task.status === 'done') {
+          status.textContent = '✓ ' + t('download.doneTitle')
+          meta.textContent = (task.folder ? t('download.folder') + task.folder : '') + (task.cancelled ? '（' + t('download.cancelled') + '）' : '')
+          bar.style.width = '100%'
+          result.textContent = task.text || ''
+          result.style.display = task.text ? '' : 'none'
+          cancelBtn.style.display = 'none'
+        } else if (task.status === 'failed') {
+          status.textContent = t('download.failed')
+          meta.textContent = task.error || ''
+          cancelBtn.style.display = 'none'
+        }
+      }
+      const poll = async function () {
+        try {
+          const res = await postJson('/download/start', {
+            repo: repoSpec,
+            dest: (repo.dest || '').trim() || '',
+          })
+          if (!res || !res.ok || !res.id) {
+            status.textContent = (res && res.text) || '发起下载失败，请稍后再试。'
+            barWrap.style.display = 'none'
+            cancelBtn.style.display = 'none'
+            return
+          }
+          taskId = res.id
+        } catch (error) {
+          status.textContent = '发起下载失败：' + (error && error.message ? error.message : String(error))
+          barWrap.style.display = 'none'
+          cancelBtn.style.display = 'none'
+          return
+        }
+        while (!closed) {
+          let st
+          try { st = await getJson('/download/status/' + encodeURIComponent(taskId)) } catch { st = null }
+          if (st && st.ok && st.task) {
+            paint(st.task)
+            if (st.task.status === 'done' || st.task.status === 'failed') return
+          }
+          await new Promise(function (resolve) { setTimeout(resolve, 800) })
+        }
+      }
+      poll()
     }
 
     /** 「传项目上去」表单：路径、仓库名（默认文件夹名）、公开/私有。 */
@@ -945,7 +1035,7 @@ function describeFailure(status, body) {
           actDownload.className = 'gt-helper-btn'
           actDownload.textContent = t('mine.download')
           actDownload.style.marginLeft = '8px'
-          actDownload.onclick = function () { document.body.removeChild(box); openDownloadDialog({ fullName: r.fullName || r.name, name: r.name }, t) }
+          actDownload.onclick = function () { document.body.removeChild(box); startBackgroundDownload({ fullName: r.fullName || r.name, name: r.name }, t) }
           row.appendChild(actDownload)
           const actUpload = document.createElement('button')
           actUpload.type = 'button'
@@ -969,7 +1059,7 @@ function describeFailure(status, body) {
         login.className = 'gt-btn'
         login.setAttribute('data-primary', '1')
         login.textContent = t('mine.login')
-        login.onclick = function () { document.body.removeChild(box); onUpload({ name: '', fullName: '' }, t) }
+        login.onclick = function () { document.body.removeChild(box); openLoginDialog(t) }
         foot.appendChild(login)
       }
       const refresh = document.createElement('button')
@@ -983,7 +1073,7 @@ function describeFailure(status, body) {
       document.body.appendChild(box)
     }
 
-    /** 「装到 DSH」入口：读取插件目录与配置列表，选好一键部署。 */
+    /** 「装到 DSH」入口：读取插件目录，列出可选插件，点一下就装（免表单）。 */
     async function onInstall(t) {
       let catalog = [], profiles = []
       try {
@@ -992,6 +1082,57 @@ function describeFailure(status, body) {
         profiles = (p && Array.isArray(p.profiles)) ? p.profiles : []
       } catch (error) { /* 空数据走兜底提示 */ }
       openInstallDialog(t, catalog, profiles)
+    }
+
+    /**
+     * 卡片上的「装到 DSH」一键安装：点卡片按钮直接装，不弹表单、不选配置、
+     * 不需要用户粘贴任何东西。后端优先走 DSH 内置插件管理器（装完自动热重载）。
+     */
+    async function onInstallFromCard(repo, t) {
+      const spec = 'github:' + (repo.fullName || (repo.owner ? repo.owner + '/' + repo.name : repo.name) || '')
+      if (!spec || spec === 'github:') return
+      const box = document.createElement('div')
+      box.className = 'gt-dialog-backdrop'
+      const panel = document.createElement('div')
+      panel.className = 'gt-dialog'
+      const title = document.createElement('h3')
+      title.className = 'gt-dialog-title'
+      title.textContent = t('install.cardTitle') + '：' + (repo.name || spec)
+      const body = document.createElement('div')
+      body.className = 'gt-dialog-body'
+      const status = document.createElement('p')
+      status.className = 'gt-explain-status'
+      status.textContent = t('catalog.installing')
+      const result = document.createElement('pre')
+      result.className = 'gt-explain-text'
+      result.style.display = 'none'
+      body.appendChild(status)
+      body.appendChild(result)
+      const foot = document.createElement('div')
+      foot.className = 'gt-dialog-foot'
+      const close = document.createElement('button')
+      close.className = 'gt-btn'
+      close.textContent = t('common.close')
+      close.onclick = function () { document.body.removeChild(box) }
+      foot.appendChild(close)
+      panel.appendChild(title)
+      panel.appendChild(body)
+      panel.appendChild(foot)
+      box.appendChild(panel)
+      box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
+      document.body.appendChild(box)
+      try {
+        const res = await postJson('/install', { spec: spec })
+        status.textContent = ''
+        status.style.display = 'none'
+        result.textContent = (res && res.text) || '部署完成。'
+        result.style.display = ''
+      } catch (error) {
+        status.textContent = ''
+        status.style.display = 'none'
+        result.textContent = '部署失败：' + (error && error.message ? error.message : String(error))
+        result.style.display = ''
+      }
     }
 
     function openInstallDialog(t, catalog, profiles) {
@@ -1488,6 +1629,15 @@ function describeFailure(status, body) {
             },
             t('action.upload'),
           ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'gt-helper-btn',
+              onClick: function () { onInstallFromCard(repo, t) },
+            },
+            t('install.cardBtn'),
+          ),
         ),
       )
     }
@@ -1883,15 +2033,12 @@ function describeFailure(status, body) {
       // Dismissed banners are read from localStorage exactly once, on the first
       // render; useState keeps later clicks immediate without another read.
       const [hiddenBanners, setHiddenBanners] = useState(readUiMemory)
-      // AI filter: null status means "not probed yet" (the button stays enabled
-      // and the host answers 412 if it really has no key). `aiHost` comes from
-      // GET /ai/info and is only used to describe the consent dialog.
+      // AI filter: 内置大模型链路（provider=deepseek-account），无需用户配置 key。
+      // aiConfigured 仅作为「AI 通道是否可用」的软探测，失败也不禁用入口。
       const [aiConfigured, setAiConfigured] = useState(null)
       const [githubConfigured, setGithubConfigured] = useState(null)
-      const [aiHost, setAiHost] = useState('')
       const [aiOpen, setAiOpen] = useState(false)
       const [aiPrompt, setAiPrompt] = useState('')
-      const [aiConsentOpen, setAiConsentOpen] = useState(false)
       const [aiLoading, setAiLoading] = useState(false)
       const [aiError, setAiError] = useState(null)
       const [aiResult, setAiResult] = useState(null)
@@ -1907,9 +2054,9 @@ function describeFailure(status, body) {
       const data = state.data
       const intros = useTranslatedIntros(data, since, language)
 
-      // Probe the AI status once; only a configured host needs the public
-      // /ai/info metadata (host/model), fetched before the first consent dialog
-      // so a cancelled dialog never issues a request of its own.
+      // Probe the AI status once; the built-in model chain needs no key, so a
+      // failed probe must NOT disable the AI entry — it stays usable and the
+      // host falls back to the local template when the model is unavailable.
       useEffect(function () {
         let alive = true
         const run = async function () {
@@ -1926,21 +2073,8 @@ function describeFailure(status, body) {
               body = null
             }
             if (!alive) return
-            const configured = Boolean(body && (body.aiConfigured === true || body.configured === true))
-            setAiConfigured(configured)
+            setAiConfigured(body ? Boolean(body.aiConfigured !== false) : true)
             setGithubConfigured(Boolean(body && body.githubTokenConfigured === true))
-            if (!configured) return
-            try {
-              const infoResponse = await fetch(BASE + '/ai/info', {
-                credentials: 'same-origin',
-                headers: { accept: 'application/json' },
-              })
-              if (!alive) return
-              const info = infoResponse && infoResponse.ok ? await infoResponse.json() : null
-              if (alive && info && info.host) setAiHost(String(info.host))
-            } catch (error) {
-              /* keep the generic host label in the consent dialog */
-            }
           } catch (error) {
             if (alive) setAiConfigured(null)
           }
@@ -2088,22 +2222,8 @@ function describeFailure(status, body) {
       function submitAi() {
         const text = aiPrompt.trim()
         if (!text) return
-        if (!readAiConsent()) {
-          setAiConsentOpen(true)
-          return
-        }
+        // 内置大模型链路：请求只发往本机 DSH 服务，无需二次确认弹窗。
         sendAi(text)
-      }
-
-      function allowAiConsent() {
-        writeAiConsent()
-        setAiConsentOpen(false)
-        const text = aiPrompt.trim()
-        if (text) sendAi(text)
-      }
-
-      function denyAiConsent() {
-        setAiConsentOpen(false)
       }
 
       function clearAi() {
@@ -2510,9 +2630,6 @@ function describeFailure(status, body) {
 
         // Configuration tutorial, collapsed by default and shown at the very
         // bottom of the panel. It never echoes any credential — only status.
-        const tutorialState = function (value) {
-          return value === true ? t('ai.status.configured') : t('ai.status.unconfigured')
-        }
         children.push(
           h(
             'section',
@@ -2527,13 +2644,13 @@ function describeFailure(status, body) {
                 onClick: function () { setHelpOpen(function (value) { return !value }) },
               },
               h('span', null, t('help.title')),
-              h('span', { className: 'gt-ai-help-caret' }, helpOpen ? t('ai.help.collapse') : t('ai.help.expand')),
+              h('span', { className: 'gt-ai-help-caret' }, helpOpen ? '收起' : '展开'),
             ),
             h(
               'div',
               { className: 'gt-ai-help-state gt-help-status', 'data-help-status': '1' },
-              h('span', { 'data-help-token-status': '1' }, t('help.github.title') + '：' + tutorialState(githubConfigured)),
-              h('span', { 'data-help-ai-status': '1' }, t('help.ai.title') + '：' + tutorialState(aiConfigured)),
+              h('span', { 'data-help-token-status': '1' }, t('help.github.title') + '：' + (githubConfigured === true ? '已配置' : '未配置（可选）')),
+              h('span', { 'data-help-ai-status': '1' }, t('help.builtin.title')),
             ),
             helpOpen
               ? h(
@@ -2553,18 +2670,8 @@ function describeFailure(status, body) {
                   ),
                   h('h4', { className: 'gt-ai-help-title' }, t('help.github.faq.title')),
                   h('pre', { className: 'gt-ai-help-code', 'data-help-faq': 'github' }, t('help.github.faq')),
-                  h('h4', { className: 'gt-ai-help-title' }, t('help.ai.title')),
-                  h('p', { className: 'gt-help-path', 'data-help-path': 'ai' }, t('help.ai.file')),
-                  h(
-                    'div',
-                    { className: 'gt-help-code-wrap' },
-                    h('pre', { className: 'gt-ai-help-code', 'data-help-code': 'ai' }, t('help.ai.steps')),
-                    h(
-                      'button',
-                      { type: 'button', className: 'gt-help-copy', 'data-help-copy': 'ai', onClick: function () { copyHelpText(t('help.ai.steps')) } },
-                      t('help.copy'),
-                    ),
-                  ),
+                  h('h4', { className: 'gt-ai-help-title' }, t('help.builtin.title')),
+                  h('pre', { className: 'gt-ai-help-code', 'data-help-code': 'builtin' }, t('help.builtin.body')),
                 )
               : null,
           ),
@@ -2609,29 +2716,6 @@ function describeFailure(status, body) {
         )
       }
 
-      // First-run privacy consent for the AI filter. It is layered above the
-      // panel and blocks nothing else; "不发送" simply closes it (zero requests).
-      if (aiConsentOpen) {
-        children.push(
-          h(
-            'div',
-            { className: 'gt-consent', key: 'consent', 'data-consent': '1', role: 'dialog', 'aria-modal': 'true' },
-            h(
-              'div',
-              { className: 'gt-consent-card' },
-              h('h3', { className: 'gt-consent-title' }, t('ai.consent.title')),
-              h('p', { className: 'gt-consent-line', 'data-consent-host': '1' }, t('ai.consent.host') + '：' + (aiHost || t('ai.consent.hostFallback'))),
-              h('p', { className: 'gt-consent-line' }, t('ai.consent.payload')),
-              h(
-                'div',
-                { className: 'gt-consent-actions' },
-                h('button', { type: 'button', className: 'gt-btn', 'data-consent-deny': '1', onClick: denyAiConsent }, t('ai.consent.deny')),
-                h('button', { type: 'button', className: 'gt-btn', 'data-primary': '1', 'data-consent-allow': '1', onClick: allowAiConsent }, t('ai.consent.allow')),
-              ),
-            ),
-          ),
-        )
-      }
       return h('div', { className: 'gt-root' }, h('style', null, CSS), h('div', { className: 'gt-shell' }, children))
     }
 
