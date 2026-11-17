@@ -64,6 +64,39 @@
 - 客户端面板注入（slots.inject）失败时降级为控制台告警，不让插件加载中断。
 - 启动时打印 `compatibility: node=X platform=Y`，方便排查版本兼容问题。
 
+## 怎么安装（其他用户怎么下载）
+
+仓库是**公开的**，任何人都能直接装。有几种方式，从简到繁：
+
+### 方式一：DSH 里一条命令装（最简单，推荐）
+
+在 DSH 对话里直接说，或走 DSH 的插件安装命令：
+
+```
+dsh plugin --profile <配置名> add https://github.com/hj178250/dsh-github-helper
+```
+
+`<配置名>` 换成你的 profile 名（默认 `web`，可用 `dsh plugin` 查看）。装完重启 DSH，侧边栏就会出现「GitHub 助手」面板。
+
+> 国内网络如果 git 拉不动 github.com，插件本身已经内置了 gh-proxy 镜像回退；也可以先装好这个插件，再用它的「装到 DSH」功能反向装别的插件。
+
+### 方式二：直接下载源码包（点几下即可）
+
+1. 打开仓库主页 https://github.com/hj178250/dsh-github-helper
+2. 点右上角绿色 **Code** 按钮 → **Download ZIP**
+3. 解压后按普通 npm 项目接入，或放进 DSH 的插件目录
+
+### 方式三：git clone
+
+```
+git clone https://github.com/hj178250/dsh-github-helper
+cd dsh-github-helper
+```
+
+### 方式四：如果已经装了这个插件
+
+直接用它自带的「装到 DSH」按钮，把任意热门 DSH 插件一键装进你的 DSH，无需手动敲命令。
+
 ## 可用工具
 
 | 工具名 | 作用 |
