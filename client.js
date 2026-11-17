@@ -208,6 +208,16 @@ function describeFailure(status, body) {
       'mine.count': '共 {count} 个项目',
       'mine.upload': '传项目上去',
       'mine.download': '下载到本地',
+      'action.install': '装到 DSH',
+      'catalog.title': '一键装到 DSH',
+      'catalog.hint': '下面这些插件可以直接装进 DeepSeek Harness，点一下选好配置就能部署，重启 DSH 后生效。全程不输密码、不消耗对话 Token。',
+      'catalog.profile': '装到哪个配置',
+      'catalog.custom': '或手动输入插件规格（npm 包名 / 账号/仓库名）',
+      'catalog.customHint': '留空则用上面选中的插件',
+      'catalog.deploy': '立即部署',
+      'catalog.loading': '正在读取插件目录…',
+      'catalog.empty': '暂时没有可一键安装的插件。',
+      'catalog.installing': '正在部署…',
     }
 
     const EN = {
@@ -967,6 +977,134 @@ function describeFailure(status, body) {
       refresh.textContent = t('mine.refresh')
       refresh.onclick = function () { document.body.removeChild(box); onMine(t) }
       foot.appendChild(refresh)
+      panel.appendChild(foot)
+      box.appendChild(panel)
+      box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
+      document.body.appendChild(box)
+    }
+
+    /** 「装到 DSH」入口：读取插件目录与配置列表，选好一键部署。 */
+    async function onInstall(t) {
+      let catalog = [], profiles = []
+      try {
+        const [c, p] = await Promise.all([getJson('/catalog'), getJson('/profiles')])
+        catalog = (c && Array.isArray(c.catalog)) ? c.catalog : []
+        profiles = (p && Array.isArray(p.profiles)) ? p.profiles : []
+      } catch (error) { /* 空数据走兜底提示 */ }
+      openInstallDialog(t, catalog, profiles)
+    }
+
+    function openInstallDialog(t, catalog, profiles) {
+      const box = document.createElement('div')
+      box.className = 'gt-dialog-backdrop'
+      const panel = document.createElement('div')
+      panel.className = 'gt-dialog'
+      const head = document.createElement('div')
+      head.className = 'gt-dialog-head'
+      const titleEl = document.createElement('h3')
+      titleEl.className = 'gt-dialog-title'
+      titleEl.textContent = t('catalog.title')
+      const close = document.createElement('button')
+      close.className = 'gt-btn'
+      close.textContent = t('common.close')
+      close.onclick = function () { document.body.removeChild(box) }
+      head.appendChild(titleEl)
+      head.appendChild(close)
+      panel.appendChild(head)
+
+      const body = document.createElement('div')
+      body.className = 'gt-dialog-body'
+      const hint = document.createElement('div')
+      hint.className = 'gt-field-hint'
+      hint.textContent = t('catalog.hint')
+      body.appendChild(hint)
+
+      // 配置下拉
+      const profField = document.createElement('div')
+      profField.className = 'gt-field'
+      const profLab = document.createElement('label')
+      profLab.className = 'gt-field-label'
+      profLab.textContent = t('catalog.profile')
+      const profSel = document.createElement('select')
+      profSel.className = 'gt-select'
+      const profList = profiles.length ? profiles : ['web']
+      for (const p of profList) {
+        const opt = document.createElement('option')
+        opt.value = p
+        opt.textContent = p
+        if (p === 'web') opt.selected = true
+        profSel.appendChild(opt)
+      }
+      profField.appendChild(profLab)
+      profField.appendChild(profSel)
+      body.appendChild(profField)
+
+      // 插件单选列表
+      let chosen = catalog.length ? catalog[0].spec : ''
+      if (!catalog.length) {
+        const empty = document.createElement('div')
+        empty.className = 'gt-empty'
+        empty.textContent = t('catalog.empty')
+        body.appendChild(empty)
+      }
+      const list = document.createElement('div')
+      for (const item of catalog) {
+        const row = document.createElement('label')
+        row.className = 'gt-check-row'
+        const radio = document.createElement('input')
+        radio.setAttribute('type', 'radio')
+        radio.setAttribute('name', 'gt-install-spec')
+        radio.value = item.spec
+        if (item.spec === chosen) radio.checked = true
+        radio.onchange = function () { chosen = item.spec }
+        const txt = document.createElement('span')
+        txt.textContent = `${item.name}（${item.tag}）— ${item.desc}`
+        row.appendChild(radio)
+        row.appendChild(txt)
+        list.appendChild(row)
+      }
+      body.appendChild(list)
+
+      // 手动输入规格
+      const customField = document.createElement('div')
+      customField.className = 'gt-field'
+      const customLab = document.createElement('label')
+      customLab.className = 'gt-field-label'
+      customLab.textContent = t('catalog.custom')
+      const customInput = document.createElement('input')
+      customInput.className = 'gt-field-input'
+      customInput.setAttribute('type', 'text')
+      customInput.setAttribute('placeholder', t('catalog.customHint'))
+      customField.appendChild(customLab)
+      customField.appendChild(customInput)
+      body.appendChild(customField)
+
+      panel.appendChild(body)
+      const foot = document.createElement('div')
+      foot.className = 'gt-dialog-foot'
+      const cancel = document.createElement('button')
+      cancel.className = 'gt-btn'
+      cancel.textContent = t('upload.cancel')
+      cancel.onclick = function () { document.body.removeChild(box) }
+      const deploy = document.createElement('button')
+      deploy.className = 'gt-btn'
+      deploy.setAttribute('data-primary', '1')
+      deploy.textContent = t('catalog.deploy')
+      deploy.onclick = async function () {
+        const spec = (customInput.value || '').trim() || chosen
+        if (!spec) { window.alert(t('catalog.customHint')); return }
+        deploy.disabled = true
+        deploy.textContent = t('catalog.installing')
+        try {
+          const res = await postJson('/install', { spec: spec, profile: profSel.value })
+          openInfoDialog(t('catalog.title'), res && res.text ? res.text : '部署完成。', t)
+        } catch (error) {
+          openInfoDialog(t('catalog.title'), '部署失败：' + (error && error.message ? error.message : String(error)), t)
+        }
+        document.body.removeChild(box)
+      }
+      foot.appendChild(cancel)
+      foot.appendChild(deploy)
       panel.appendChild(foot)
       box.appendChild(panel)
       box.onclick = function (event) { if (event.target === box) document.body.removeChild(box) }
@@ -2064,6 +2202,7 @@ function describeFailure(status, body) {
             h('button', { type: 'button', className: 'gt-btn', onClick: refresh, disabled: state.status === 'loading' || state.status === 'refreshing' }, t('refresh')),
             h('button', { type: 'button', className: 'gt-btn', onClick: function () { onMine(t) }, title: t('mine.title') }, t('mine.title')),
             h('button', { type: 'button', className: 'gt-btn', onClick: function () { openUploadDialog({ name: '', fullName: '' }, t) }, title: t('upload.title') }, t('mine.upload')),
+            h('button', { type: 'button', className: 'gt-btn', 'data-primary': '1', onClick: function () { onInstall(t) }, title: t('catalog.title') }, t('action.install')),
           ),
         ),
       )
@@ -2522,13 +2661,22 @@ function describeFailure(status, body) {
 
         const t = makeT(locale)
 
-        ctx.slots.inject('sidebar.panellist', function () {
-          return ctx.slots.register({ name: 'sidebar.panellist', id: 'github-trending', order: 30, label: t('nav.title') }, NavIcon)
-        })
-
-        ctx.slots.inject('main', function () {
-          return ctx.slots.register({ name: 'main', key: 'github-trending' }, Panel)
-        })
+        // 自我维护：slots API 在 DSH 升级后可能改名或缺失。
+        // 逐块兜底，任何一处失败都不让整个插件加载崩溃。
+        try {
+          if (ctx.slots && typeof ctx.slots.inject === 'function' && typeof ctx.slots.register === 'function') {
+            ctx.slots.inject('sidebar.panellist', function () {
+              return ctx.slots.register({ name: 'sidebar.panellist', id: 'github-trending', order: 30, label: t('nav.title') }, NavIcon)
+            })
+            ctx.slots.inject('main', function () {
+              return ctx.slots.register({ name: 'main', key: 'github-trending' }, Panel)
+            })
+          } else {
+            console.warn('[GitHub 助手] 当前 DSH 未提供 slots 接口，面板未挂载（核心功能不受影响）。')
+          }
+        } catch (error) {
+          console.warn('[GitHub 助手] 面板挂载失败，核心功能不受影响：', error && error.message ? error.message : String(error))
+        }
       },
     }
   },

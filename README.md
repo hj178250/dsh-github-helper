@@ -1,8 +1,8 @@
 # DSH GitHub 助手
 
-一个给 DSH（DeepSeek Harness）用的中文 GitHub 插件。装好以后，你在 DSH 的侧边栏就能看到 GitHub 热门项目卡片，点一下就能看懂项目、一键传到自己的 GitHub。**全程中文，不用读英文 README，登录不用输密码。**
+一个给 DSH（DeepSeek Harness）用的中文 GitHub 插件。装好以后，你在 DSH 的侧边栏就能看到 GitHub 热门项目卡片，点一下就能看懂项目、一键传到自己的 GitHub，还能把别的 DSH 插件一键装进自己的 DSH。**全程中文，不用读英文 README，登录不用输密码。**
 
-## 三个功能
+## 五个功能
 
 ### 功能一：中文热门卡片
 
@@ -39,6 +39,31 @@
 
 登录令牌保存在 `~/.dsh/github-auth.json`（Windows 为 `%USERPROFILE%\.dsh\github-auth.json`）。
 
+### 功能四：应用下载（下载项目到本地）
+
+每张卡片上还有「应用下载」按钮。点击后填写保存目录（默认系统「下载」目录），插件通过 GitHub 接口拉取项目源码包（zipball）并自动解压到本地。下载走 `api.github.com` + `codeload.github.com`，不依赖 git 写通道，国内网络可直接下载。
+
+「我的项目」弹窗里的每一行也有「下载到本地」按钮，可以把你自己账号下的任意仓库下载下来。
+
+### 功能五：一键装到 DSH
+
+面板头部有「装到 DSH」按钮。点击后弹出部署窗口：
+
+1. 选择目标配置（自动列出 `~/.dsh/profiles` 下的所有配置，`web` 置顶）。
+2. 从插件清单里点选一个（内置 12 个常用 DSH 插件），或手动填写 npm 包名 / `账号/仓库名` / `github:账号/仓库名`。
+3. 点「立即部署」，插件在后台调用 pnpm 安装，并把插件名写进该配置的启动清单，重启 DSH 后生效。
+
+安装自动处理国内网络：git 走 gh-proxy 镜像、注入 git 到 PATH、修正 Windows PATH 大小写冲突，无需手动配置。也可直接对 DSH 说「把 xxx 装到 DSH」触发 `github_install`。
+
+### 自我维护（抗 DSH 更新）
+
+插件按「服务可选、逐项隔离」设计，DSH 升级后不会因为某个服务接口变化而整体崩溃：
+
+- 所有 host 服务（tools / web / slots / commands）获取都带存在性检查，缺失时安全跳过并打日志。
+- 工具注册、路由挂载逐项 try-catch，单个失败不影响其它工具与接口。
+- 客户端面板注入（slots.inject）失败时降级为控制台告警，不让插件加载中断。
+- 启动时打印 `compatibility: node=X platform=Y`，方便排查版本兼容问题。
+
 ## 可用工具
 
 | 工具名 | 作用 |
@@ -51,6 +76,9 @@
 | `github_upload` | 一键上传（建仓 + 克隆 + 拷贝 + 提交 + 推送） |
 | `github_download` | 应用下载：把 GitHub 项目源码包下载并解压到本地（默认在系统「下载」目录） |
 | `github_mine` | 浏览自己账号下的所有项目（仓库列表） |
+| `github_install` | 一键装到 DSH：把插件装进指定配置并加入启动清单（`spec` / `repo` / `profile`） |
+| `github_profiles` | 列出本机所有可用的 DSH 配置 |
+| `github_catalog` | 列出内置的常用 DSH 插件清单 |
 
 ## 面板 HTTP 接口
 
@@ -61,6 +89,9 @@
 - `POST /dsh-github-trending/upload`：一键上传
 - `GET /dsh-github-trending/mine`：浏览自己账号的所有项目
 - `POST /dsh-github-trending/download`：应用下载（下载并解压项目源码包）
+- `GET /dsh-github-trending/profiles`：列出本机 DSH 配置
+- `GET /dsh-github-trending/catalog`：列出常用 DSH 插件清单
+- `POST /dsh-github-trending/install`：一键装到 DSH（`spec` + `profile`）
 
 ## 来源与致谢
 

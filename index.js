@@ -13,7 +13,7 @@
  */
 
 import { getReport, normalizeCustomBoards, normalizeInstallQuality, reportQuery } from './lib/report.js'
-import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText, downloadRepo } from './lib/github-ops.js'
+import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText, downloadRepo, installToDsh, listProfiles, DSH_PLUGIN_CATALOG } from './lib/github-ops.js'
                                                                                   
 import { MAX_README_CHARS, firstParagraph, readAiConfig, translateIntros } from './lib/translate.js'
                                                                         
@@ -977,6 +977,61 @@ function helperDownloadRoute(ctx)          {
   }
 }
 
+/** GET /dsh-github-trending/profiles — 列出可安装插件的配置。 */
+function helperProfilesRoute()          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/profiles`,
+    methods: ['GET'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['GET'])) return
+      try {
+        sendJson(res, 200, { ok: true, profiles: listProfiles() })
+      } catch (error) {
+        sendJson(res, 200, { ok: false, profiles: [], text: `读取配置失败：${error instanceof Error ? error.message : String(error)}` })
+      }
+    },
+  }
+}
+
+/** GET /dsh-github-trending/catalog — 可直接装到 DSH 的插件目录。 */
+function helperCatalogRoute()          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/catalog`,
+    methods: ['GET'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['GET'])) return
+      sendJson(res, 200, { ok: true, catalog: DSH_PLUGIN_CATALOG })
+    },
+  }
+}
+
+/** POST /dsh-github-trending/install — 一键装到 DSH。 */
+function helperInstallRoute(ctx)          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/install`,
+    methods: ['POST'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['POST'])) return
+      let body
+      try {
+        body = await readJsonBody(req)
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `请求内容有误：${error instanceof Error ? error.message : String(error)}` })
+        return
+      }
+      try {
+        const text = await installToDsh(ctx, body || {})
+        sendJson(res, 200, { ok: true, text })
+      } catch (error) {
+        sendJson(res, 200, { ok: false, text: `部署失败：${error instanceof Error ? error.message : String(error)}` })
+      }
+    },
+  }
+}
+
 /** GET /dsh-github-trending/mine — 浏览自己账号的所有项目（分页）。 */
 function helperMineRoute(ctx)          {
   return {
@@ -1079,20 +1134,41 @@ export function apply(ctx                 , config                   = {})      
     dispose(setup)
   }
 
+  // 自我维护：每个工具的注册单独兜底。DSH 升级若改变某个工具的 schema 要求，
+  // 只影响那一个工具，不会中断其余工具与整个插件加载。
   effect(() => {
     const tools = ctx.tools
-    if (!tools) return () => undefined
-    const disposers = [tools.register(toolDefinition())]
-    for (const def of helperToolDefinitions(ctx)) {
-      const d = tools.register(def)
-      if (typeof d === 'function') disposers.push(d)
+    if (!tools || typeof tools.register !== 'function') return () => undefined
+    const disposers = []
+    const safeRegister = (def) => {
+      if (!def || !def.name) return
+      try {
+        const d = tools.register(def)
+        if (typeof d === 'function') disposers.push(d)
+      } catch (error) {
+        logInfo(ctx, `tool registration skipped (${def.name}): ${error instanceof Error ? error.message : String(error)}`)
+      }
     }
+    safeRegister(toolDefinition())
+    let defs = []
+    try {
+      defs = helperToolDefinitions(ctx) || []
+    } catch (error) {
+      logInfo(ctx, `helper tools unavailable: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    for (const def of defs) safeRegister(def)
     return () => {
       for (const d of disposers) {
         try { if (typeof d === 'function') d() } catch { /* already disposed */ }
       }
     }
   })
+
+  // 自我维护：启动只记录兼容性信息，不读取任何可能随版本变化的内部 API，
+  // 也不因读取失败而中断加载。
+  try {
+    logInfo(ctx, `compatibility: node=${process.version} platform=${process.platform}`)
+  } catch { /* 日志不可用也不影响加载 */ }
 
   // Second transport: some networks block github.com while the harness' own
   // web-fetch route still reaches it. Registering it as a fallback keeps the
@@ -1127,16 +1203,26 @@ export function apply(ctx                 , config                   = {})      
       const server = (host && typeof host.get === 'function' ? host.get('webServer') : undefined) ?? host?.webServer
       if (!server || typeof server.register !== 'function') return undefined
       const disposers               = []
-      for (const route of [
-        reportRoute(ctx), translateRoute(ctx), aiRoute(ctx), aiInfoRoute(), statusRoute(),
-        helperLoginStartRoute(ctx), helperLoginStatusRoute(ctx), helperUploadRoute(ctx), helperMineRoute(ctx), helperExplainRoute(), helperDownloadRoute(ctx),
-      ]) {
-        const disposeRoute = server.register(route)
-        if (typeof disposeRoute === 'function') disposers.push(disposeRoute)
+      const routeFactories = [
+        () => reportRoute(ctx), () => translateRoute(ctx), () => aiRoute(ctx), () => aiInfoRoute(), () => statusRoute(),
+        () => helperLoginStartRoute(ctx), () => helperLoginStatusRoute(ctx), () => helperUploadRoute(ctx),
+        () => helperMineRoute(ctx), () => helperExplainRoute(), () => helperDownloadRoute(ctx),
+        () => helperProfilesRoute(), () => helperCatalogRoute(), () => helperInstallRoute(ctx),
+      ]
+      // 自我维护：逐条构造并注册，单条失败不影响其余路由与面板加载。
+      for (const make of routeFactories) {
+        try {
+          const route = make()
+          if (!route) continue
+          const disposeRoute = server.register(route)
+          if (typeof disposeRoute === 'function') disposers.push(disposeRoute)
+        } catch (error) {
+          logInfo(ctx, `route skipped: ${error instanceof Error ? error.message : String(error)}`)
+        }
       }
       logInfo(
         ctx,
-        `routes mounted at ${ROUTE_BASE}/report, ${ROUTE_BASE}/translate, ${ROUTE_BASE}/ai, ${ROUTE_BASE}/ai/info, ${ROUTE_BASE}/status, ${ROUTE_BASE}/login/start, ${ROUTE_BASE}/login/status, ${ROUTE_BASE}/upload, ${ROUTE_BASE}/mine, ${ROUTE_BASE}/explain, ${ROUTE_BASE}/download`,
+        `routes mounted at ${ROUTE_BASE}/report, ${ROUTE_BASE}/translate, ${ROUTE_BASE}/ai, ${ROUTE_BASE}/ai/info, ${ROUTE_BASE}/status, ${ROUTE_BASE}/login/start, ${ROUTE_BASE}/login/status, ${ROUTE_BASE}/upload, ${ROUTE_BASE}/mine, ${ROUTE_BASE}/explain, ${ROUTE_BASE}/download, ${ROUTE_BASE}/profiles, ${ROUTE_BASE}/catalog, ${ROUTE_BASE}/install`,
       )
       return () => {
         for (const disposeRoute of disposers) {
