@@ -1192,7 +1192,7 @@ export function apply(ctx                 , config                   = {})      
   // GH_TOKEN and the token file (see githubToken in lib/enrich.ts). The value
   // is never logged.
   SETTINGS.token = githubToken(config.token) || null
-  SETTINGS.defaultLimit = clampInt(config.defaultLimit, 50, 3, 50)
+  SETTINGS.defaultLimit = clampInt(config.defaultLimit, 25, 3, 50)
   SETTINGS.deepCount = clampInt(config.deepCount, 10, 1, 50)
   SETTINGS.defaultFocus = clampInt(config.defaultFocus, 3, 1, 6)
   SETTINGS.defaultSince = (['daily', 'weekly', 'monthly']            ).includes(String(config.defaultSince))
