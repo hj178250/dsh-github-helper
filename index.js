@@ -13,7 +13,7 @@
  */
 
 import { getReport, normalizeCustomBoards, normalizeInstallQuality, reportQuery } from './lib/report.js'
-import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText, downloadRepo, installToDsh, listProfiles, DSH_PLUGIN_CATALOG } from './lib/github-ops.js'
+import { helperToolDefinitions, loginStart, loginStatus, isLoggedIn, uploadProject, explainContext, listMyRepos, mineToText, downloadRepo, installToDsh, listProfiles, loadPluginCatalog, DSH_PLUGIN_CATALOG } from './lib/github-ops.js'
                                                                                   
 import { MAX_README_CHARS, firstParagraph, readAiConfig, translateIntros } from './lib/translate.js'
                                                                         
@@ -994,15 +994,21 @@ function helperProfilesRoute()          {
   }
 }
 
-/** GET /dsh-github-trending/catalog — 可直接装到 DSH 的插件目录。 */
-function helperCatalogRoute()          {
+/** GET /dsh-github-trending/catalog — 可直接装到 DSH 的插件目录（已合并本机已装 + 远程清单）。 */
+function helperCatalogRoute(ctx)          {
   return {
     kind: 'exact',
     path: `${ROUTE_BASE}/catalog`,
     methods: ['GET'],
     async handler(req     , res     )       {
       if (methodRejected(req, res, ['GET'])) return
-      sendJson(res, 200, { ok: true, catalog: DSH_PLUGIN_CATALOG })
+      try {
+        const catalog = await loadPluginCatalog(ctx)
+        sendJson(res, 200, { ok: true, catalog })
+      } catch (error) {
+        // 即使动态合并失败，也退回内置目录，保证前端始终有内容可展示。
+        sendJson(res, 200, { ok: true, catalog: DSH_PLUGIN_CATALOG })
+      }
     },
   }
 }
@@ -1207,7 +1213,7 @@ export function apply(ctx                 , config                   = {})      
         () => reportRoute(ctx), () => translateRoute(ctx), () => aiRoute(ctx), () => aiInfoRoute(), () => statusRoute(),
         () => helperLoginStartRoute(ctx), () => helperLoginStatusRoute(ctx), () => helperUploadRoute(ctx),
         () => helperMineRoute(ctx), () => helperExplainRoute(), () => helperDownloadRoute(ctx),
-        () => helperProfilesRoute(), () => helperCatalogRoute(), () => helperInstallRoute(ctx),
+        () => helperProfilesRoute(), () => helperCatalogRoute(ctx), () => helperInstallRoute(ctx),
       ]
       // 自我维护：逐条构造并注册，单条失败不影响其余路由与面板加载。
       for (const make of routeFactories) {

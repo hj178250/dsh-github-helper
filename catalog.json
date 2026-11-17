@@ -1,0 +1,14 @@
+[
+  { "name": "dsh-genspark", "spec": "github:kgmkm/dsh-genspark", "desc": "Genspark 联网搜索集成", "tag": "GitHub" },
+  { "name": "dsh-purge-plus", "spec": "github:luowang-ui/dsh-purge-plus", "desc": "指令权威性与清洗增强", "tag": "GitHub" },
+  { "name": "dsh-market", "spec": "dshmarket", "desc": "插件市场", "tag": "npm" },
+  { "name": "dsh-context", "spec": "dsh-context", "desc": "上下文管理增强", "tag": "npm" },
+  { "name": "dsh-novel-craft", "spec": "dsh-novel-craft", "desc": "小说创作助手", "tag": "npm" },
+  { "name": "dsh-deeptutor", "spec": "dsh-deeptutor", "desc": "DeepTutor 学习辅导", "tag": "npm" },
+  { "name": "@anionex/dsh-vision-toolkit", "spec": "@anionex/dsh-vision-toolkit", "desc": "视觉工具箱", "tag": "npm" },
+  { "name": "dsh-vision-router", "spec": "dsh-vision-router", "desc": "视觉模型路由", "tag": "npm" },
+  { "name": "dsh-camel", "spec": "dsh-camel", "desc": "多模型协作", "tag": "npm" },
+  { "name": "dsh-browser", "spec": "dsh-browser", "desc": "浏览器能力扩展", "tag": "npm" },
+  { "name": "dsh-plugin-github", "spec": "dsh-plugin-github", "desc": "GitHub 工具集成", "tag": "npm" },
+  { "name": "dsh-cost-meter", "spec": "dsh-cost-meter", "desc": "用量与成本统计", "tag": "npm" }
+]

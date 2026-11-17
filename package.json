@@ -41,8 +41,12 @@
     "locale/*.json",
     "icon.svg",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "catalog.json"
   ],
+  "scripts": {
+    "test": "node --test test/"
+  },
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
