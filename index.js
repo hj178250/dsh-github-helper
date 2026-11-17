@@ -1060,6 +1060,28 @@ function helperExplainRoute(ctx)          {
   }
 }
 
+/** POST /dsh-github-trending/is-plugin — 检测某个 GitHub 项目是不是 DSH 插件（决定卡片是否显示「装到 DSH」按钮）。 */
+function helperIsPluginRoute(ctx)          {
+  return {
+    kind: 'exact',
+    path: `${ROUTE_BASE}/is-plugin`,
+    methods: ['POST'],
+    async handler(req     , res     )       {
+      if (methodRejected(req, res, ['POST'])) return
+      let body
+      try {
+        body = await readJsonBody(req)
+      } catch (error) {
+        sendJson(res, 200, { ok: false, isPlugin: false, text: `请求内容有误：${error instanceof Error ? error.message : String(error)}` })
+        return
+      }
+      let isPlugin = false
+      try { isPlugin = Boolean(await isDshPlugin(ctx, body || {})) } catch { isPlugin = false }
+      sendJson(res, 200, { ok: true, isPlugin })
+    },
+  }
+}
+
 /** GET /dsh-github-trending/login/info — 登录状态 + 没有账号时的注册入口。 */
 function helperLoginInfoRoute(ctx)          {
   return {
@@ -1299,6 +1321,7 @@ export function apply(ctx                 , config                   = {})      
         () => helperDownloadRoute(ctx), () => helperDownloadStartRoute(ctx), () => helperDownloadStatusRoute(),
         () => helperDownloadListRoute(), () => helperDownloadCancelRoute(),
         () => helperProfilesRoute(), () => helperCatalogRoute(ctx), () => helperInstallRoute(ctx),
+        () => helperIsPluginRoute(ctx),
       ]
       // 自我维护：逐条构造并注册，单条失败不影响其余路由与面板加载。
       for (const make of routeFactories) {

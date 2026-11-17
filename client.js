@@ -1512,12 +1512,38 @@ function describeFailure(status, body) {
      * name, description, metrics and language/category tags (no `gt-block`).
      * The board-source marker is rendered in both modes.
      */
+    /** 已检测过的 DSH 插件缓存：fullName -> true/false，跨卡片复用省 API。 */
+    const PLUGIN_CHECKS = {}
+
     function RepoCard(props) {
       const repo = props.repo
       const t = props.t
       const mode = props.mode === 'simple' ? 'simple' : 'deep'
       const deep = mode === 'deep'
+      const isPluginState = useState(PLUGIN_CHECKS[repo.fullName])
+      const isPlugin = isPluginState[0]
+      const setIsPlugin = isPluginState[1]
       const intros = props.intros || null
+      // 懒检测：卡片渲染后异步查这个项目是不是 DSH 插件，只有可安装的才显示「装到 DSH」按钮。
+      useEffect(function () {
+        if (isPlugin === true || isPlugin === false) return
+        const key = repo.fullName
+        if (!key || PLUGIN_CHECKS[key] !== undefined) {
+          if (PLUGIN_CHECKS[key] !== undefined && PLUGIN_CHECKS[key] !== isPlugin) setIsPlugin(PLUGIN_CHECKS[key])
+          return
+        }
+        PLUGIN_CHECKS[key] = null
+        postJson('/is-plugin', { repo: key })
+          .then(function (res) {
+            const verdict = Boolean(res && res.ok && res.isPlugin)
+            PLUGIN_CHECKS[key] = verdict
+            setIsPlugin(verdict)
+          })
+          .catch(function () {
+            PLUGIN_CHECKS[key] = false
+            setIsPlugin(false)
+          })
+      }, [repo.fullName])
       // The AI channel replaces 项目介绍 with the model intro and 上手门槛 with the
       // model onboarding (only when non-empty; otherwise the rule sentence stays).
       // Order, labels and every other block stay exactly as the template produced them.
@@ -1629,15 +1655,17 @@ function describeFailure(status, body) {
             },
             t('action.upload'),
           ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'gt-helper-btn',
-              onClick: function () { onInstallFromCard(repo, t) },
-            },
-            t('install.cardBtn'),
-          ),
+          isPlugin === true
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'gt-helper-btn',
+                  onClick: function () { onInstallFromCard(repo, t) },
+                },
+                t('install.cardBtn'),
+              )
+            : null,
         ),
       )
     }
